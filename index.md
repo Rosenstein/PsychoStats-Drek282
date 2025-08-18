@@ -94,4 +94,4 @@ Kudos to Valve as well for maintaining their back catalogue.
 
 Credit to wakachamo, Rosenstein, Solomenka and janzagata for their contributions.  Thanks also to RoboCop from APG for his support and encouragement.
 
-The basic text for the default privacy policy has been copied from the default WordPress privacy policy.
+The basic text for the default privacy policy has been copied from the default WordPress privacy policy. 
