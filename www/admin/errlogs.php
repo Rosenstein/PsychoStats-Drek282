@@ -22,6 +22,7 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
 
@@ -29,7 +30,7 @@ $validfields = array('ref','start','limit','filter','view');
 $cms->theme->assign_request_vars($validfields, true);
 
 if (!is_numeric($start) or $start < 0) $start = 0;
-if (!is_numeric($limit) or $limit < 0) $limit = 300;
+if (!is_numeric($limit) or $limit < 0 or $limit > 100) $limit = 100;
 $order = 'desc';
 $sort  = 'timestamp';
 $filter = trim($filter ?? '');
@@ -92,14 +93,13 @@ $cms->crumb('Error Logs', ps_url_wrapper(array('_base' => $php_scnm )));
 
 // assign variables to the theme
 $cms->theme->assign(array(
-	'page'		=> basename(__FILE__, '.php'), 
+	'page'		=> $basename, 
 	'logs'		=> $logs,
 	'total'		=> $total,
 	'pager'		=> $pager,
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/2column.css');
 $cms->theme->add_css('css/forms.css');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');

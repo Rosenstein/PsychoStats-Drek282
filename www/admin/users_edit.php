@@ -22,6 +22,7 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
 $cms->theme->assign('page', 'users');
@@ -98,13 +99,7 @@ if ($submit) {
 		$form->error('accesslevel', $cms->trans("Invalid access level specified"));
 	}
 
-	if (!$form->error('username')) {
-		$_u = $u->load_user($input['username'], 'username');
-		if ($_u and $_u['userid'] != $u->userid()) {
-			$form->error('username', $cms->trans("Username already exists under a different user"));
-		}
-		unset($_u);
-	}
+	$u->load_user($input['username'], 'username');
 	
 	$valid = ($valid and !$form->has_errors());
 	if ($valid) {
@@ -150,7 +145,6 @@ $cms->theme->assign(array(
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 //$cms->theme->add_js('js/jquery.interface.js');
 $cms->theme->add_js('js/forms.js');

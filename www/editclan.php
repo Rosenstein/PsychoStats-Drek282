@@ -22,12 +22,41 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Edit Clan Profile');
+$cms->theme->page_title('Edit Clan Profile—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_opts');
+	}
+	previouspage($php_scnm);
+}
 
 $validfields = array('ref','id','del','submit','cancel','memberlist','value','add','del','ajax');
+$_GET['ref'] = htmlspecialchars($_GET['ref'] ?? null); //XSS Fix. Thanks to JS2007
 $cms->theme->assign_request_vars($validfields, true);
 
 $message = '';
@@ -91,19 +120,19 @@ if ($id) {
 
 	if (!$clan) {
 		$data = array( 'message' => $cms->trans("Invalid clan ID Specified") );
-		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		$cms->full_page_err($basename, $data);
 		exit();
 	}
 } else {
 	$data = array( 'message' => $cms->trans("Invalid clan ID Specified") );
-	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	$cms->full_page_err($basename, $data);
 	exit();
 }
 
 // check privileges to edit this clan
 if (!ps_user_can_edit_clan($clan['clanid'], ps_user_plrid())) {
 	$data = array( 'message' => $cms->trans("Insufficient privileges to edit clan!") );
-	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	$cms->full_page_err($basename, $data);
 	exit();
 }
 
@@ -287,17 +316,17 @@ if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->
 $allowed_html_tags = str_replace(',', ', ', $ps->conf['theme']['format']['allowed_html_tags']);
 if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->trans("none") . '</em>';
 $cms->theme->assign(array(
-	'page'		=> basename(__FILE__, '.php'), 
-	'errors'	=> $form->errors(),
-	'clan'		=> $clan,
-	'members'	=> $members,
+	'maintenance'		=> $maintenance,
+	'errors'			=> $form->errors(),
+	'clan'				=> $clan,
+	'members'			=> $members,
 	'allowed_html_tags' => $allowed_html_tags,
-	'form'		=> $form->values(),
-	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'form'				=> $form->values(),
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/jquery.interface.js');	// needed for autocomplete
 $cms->theme->add_js('js/forms.js');

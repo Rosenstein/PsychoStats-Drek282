@@ -1,6 +1,14 @@
-***As of September 29, 2021, this repository and all related repositories have been mothballed.  So long, thanks for all the fish, and anyone is more than welcome to take the work that has been done here, set up their own repositories, and fly with it.  The code may still be updated from time to time, but this should not be considered an active project.***
 
-This is, yet another, unofficial version of PsychoStats by Stormtrooper. Updated to work with PHP 7.1.0+ and MySQL 5.5.0+.  The minimum required version of Perl is 5.08.
+![header](https://i.imgur.com/4gf4l2i.png)
+
+[![GitHub repo size](https://img.shields.io/github/repo-size/drek282/psychostats)](https://github.com/Drek282/PsychoStats/archive/refs/heads/main.zip)
+ [![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-raw/drek282/psychostats)](https://github.com/Drek282/PsychoStats/issues) [![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-closed-raw/drek282/psychostats)](https://github.com/Drek282/PsychoStats/issues?q=is%3Aissue+is%3Aclosed) [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/drek282/psychostats.svg)](http://isitmaintained.com/project/drek282/psychostats)
+ 
+---
+
+This is, yet another, unofficial version of PsychoStats by Stormtrooper. Updated to work with PHP `7.1.0+` and MySQL*/MariaDB `5.5.0+`.  The minimum required version of Perl is `5.08`.
+
+\* **Oracle's MySQL `8.0+` is *NOT* supported.  Please use [MariaDB](https://mariadb.org/ "MariaDB") instead.**
 
 ***Note that as of the release of version 3.2.7b on June 4, 2021, and specifically the change before that when the character encoding for the database was updated, if you do not drop and recreate your database, certain functionality will break.  You are strongly advised not to run the new web front end on an old database created before those changes were implemented.***
 
@@ -13,26 +21,26 @@ Flag icon images and many map and overlay images have been converted from jpg an
 This version of PsychoStats currently supports the following games:  
 ***We are always looking for server logs to allow for testing and improved game support.***
 
-* [The Battle Grounds III](https://github.com/Drek282/ps_bg3 "The Battle Grounds III")
-* [Call of Duty 4X](https://github.com/Drek282/ps_cod4x "Call of Duty 4X")
-* [Counter-Strike](https://github.com/Drek282/ps_cstrike "Counter-Strike")
-* [Counter-Strike: Source](https://github.com/Drek282/ps_cstrikes "Counter-Strike: Source")
-* [Firearms 3.0](https://github.com/Drek282/ps_firearms "Firearms 3.0")
-* [Natural Selection](https://github.com/Drek282/ps_natural "Natural Selection")
-* [Team Fortress Classic](https://github.com/Drek282/ps_tfc "Team Fortress Classic")
+| :label: Game | Protocol | Supported | Tested |
+| :--- | :---: | :---: | :---: |
+| [Counter-Strike](https://github.com/Drek282/ps_cstrike "Counter-Strike") | half-life | :heavy_check_mark: | :heavy_check_mark: |
+| [Day of Defeat](https://github.com/Drek282/ps_dod "Day of Defeat") | half-life | :heavy_check_mark: | :heavy_check_mark: |
+| [Firearms 3.0](https://github.com/Drek282/ps_firearms "Firearms 3.0") | half-life | :heavy_check_mark: | :heavy_check_mark: |
+| [Gun Game](https://github.com/Drek282/ps_gungame "Gun Game") | half-life | :heavy_check_mark: | :x: |
+| [Half-Life Death Match](https://github.com/Drek282/ps_hldm "Half-Life Death Match") | half-life | :heavy_check_mark: | :heavy_check_mark: |
+| [Natural Selection](https://github.com/Drek282/ps_natural "Natural Selection") | half-life | :heavy_check_mark: | :heavy_check_mark: |
+| [Soldat](https://github.com/Drek282/ps_soldat "Soldat") | half-life | :heavy_check_mark: | :x: |
+| [Team Fortress Classic](https://github.com/Drek282/ps_tfc "Team Fortress Classic") | half-life | :heavy_check_mark: | :heavy_check_mark: |
+| [Counter-Strike: Source](https://github.com/Drek282/ps_cstrikes "Counter-Strike: Source") | source | :heavy_check_mark: | :heavy_check_mark: |
+| [Day of Defeat: Source](https://github.com/Drek282/ps_dods "Day of Defeat: Source") | source | :heavy_check_mark: | :x: |
+| [Gun Game: Source](https://github.com/Drek282/ps_gungames "Gun Game: Source") | source | :heavy_check_mark: | :x: |
+| [Half-Life 2 Death Match](https://github.com/Drek282/ps_hl2dm "Half-Life 2 Death Match") | source | :heavy_check_mark: | :x: |
+| [Team Fortress 2](https://github.com/Drek282/ps_tf2 "Team Fortress 2") | source | :heavy_check_mark: | :x: |
+| [The Battle Grounds III](https://github.com/Drek282/ps_bg3 "The Battle Grounds III") | source | :heavy_check_mark: | :heavy_check_mark: |
+| [Call of Duty 4](https://github.com/Drek282/ps_cod4 "Call of Duty 4") | cod4 | :heavy_check_mark: | :x: |
+| [Call of Duty 4X](https://github.com/Drek282/ps_cod4x "Call of Duty 4X") | cod4x | :heavy_check_mark: | :x: |
 
-
-There are also modules available for the following games, but they are untested and may not be functional:  
-***If you wish to improve support for these games we will require server logs.***
-
-* [Call of Duty 4](https://github.com/Drek282/ps_cod4 "Call of Duty 4")
-* [Day of Defeat](https://github.com/Drek282/ps_dod "Day of Defeat")
-* [Day of Defeat: Source](https://github.com/Drek282/ps_dods "Day of Defeat: Source")
-* [Gun Game](https://github.com/Drek282/ps_gungame "Gun Game")
-* [Half-Life Death Match](https://github.com/Drek282/ps_hldm "Half-Life Death Match")
-* [Half-Life 2 Death Match](https://github.com/Drek282/ps_hl2dm "Half-Life 2 Death Match")
-* [Soldat](https://github.com/Drek282/ps_soldat "Soldat")
-* [Team Fortress 2](https://github.com/Drek282/ps_tf2 "Team Fortress 2")
+There is also a GitHub repo for [PsychoStats Mods](https://github.com/Rosenstein/Psychostats-Mods/ "PsychoStats Mods").
 
 We have, for the most part, tried not to make changes to the way Psychostats works, by default. However, one or two changes have been made that reflect personal biases, to make the process of reinstalling Psychostats hundreds of times more convenient as it has been worked on. One of those is that the bonus for an ffkill is now -10.  Winning games or rounds is really the entire point, far more important than k:d ratios, this is reflected in the bonuses that have been added for team wins.
 
@@ -42,6 +50,7 @@ Most of the links and references to psychostats.com have been removed as that do
 
 
 You can view working demos of PsychoStats at the following links: 
+*Note that this is a testing environment and as such the availability of the demos will not be 100%, 24/7.*
 
 * [The Battle Grounds III](https://displaced.zone/ps_bg3/ "The Battle Grounds III")
 * [Firearms 3.0](https://displaced.zone/ps_firearms-30/ "Firearms 3.0")
@@ -53,19 +62,11 @@ You can view working demos of PsychoStats at the following links:
 
 *The plan for the following issues is to either fix them, or improve them, in future versions:*
 
-* Occassionally GeoIP assigns the wrong nationality to a player.
-
 * One of the biggest problems with PsychoStats is that psychostats.com no longer hosts the documentation that it once did.
 
 * The events for Firearms and Team Fortress Classic have not been thoroughly analyzed and tested.
 
 * The team wins and losses for Firearms don't work extremely well or consistently.
-
-* PsychoStats is decidedly **not** mobile friendly.
-
-* Mcrypt is deprecated/obsolete.
-
-* The Overview page that makes use of the Google Maps functionality is broken.
 
 
 ## **Stuff that Remains Untested**
@@ -77,10 +78,12 @@ You can view working demos of PsychoStats at the following links:
 
 ## **Future Plans**
 
-* Improve display on mobile devices.
 * Copy the old PsychoStats wiki content from The Wayback Machine to the GitHub wiki.
-* GDPR compliance.
-* Fix the Google Maps functionality on the Overview page.
+* Create a PschoStats HELP page and supporting software infrastructure.
+
+## A Note Regarding the Cookie Consent, a.k.a. GDPR and CCPA Compliance
+
+If you choose to enable Cookie Consent, in the Admin CP Security section, by default no cookies will be saved in users browsers. Cookies must be accepted for them to be saved by users in their browsers. If cookeies are not accepted users will be able to browse the stats but they will not be able to register or log into an account if those options are enabled or if they already have an account. They will also not be able to log into an admin account if they have one, or choose anything other than the default theme or language support.
 
 
 ## **Credits**

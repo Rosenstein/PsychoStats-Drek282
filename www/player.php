@@ -22,12 +22,18 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Player Stats');
+$cms->theme->page_title('Player Stats—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
 
 // maximum player ID's to load for ipaddr, name, and worldid
+$DEFAULT_SORT = 'kills';
 $MAX_PLR_IDS = 10;
 
 $validfields = array(
@@ -41,22 +47,48 @@ $validfields = array(
 );
 $cms->theme->assign_request_vars($validfields, true);
 
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+}
+
 if ($cms->input['ofc']) {
 	$styles = $cms->theme->load_styles();
 	return_ofc_data($styles);
 	exit;
 }
 
-if (!$msort) $msort = 'kills';
-if (!$ssort) $ssort = 'sessionstart';
+// SET DEFAULTS—sanitized
 if (!$slimit) $slimit = '10';
-
-// SET DEFAULTS. Since they're basically the same for each list, we do this in a loop
+$vsort = ($vsort and strlen($vsort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $vsort) : $DEFAULT_SORT;
+$msort = ($msort and strlen($msort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $msort) : $DEFAULT_SORT;
+$wsort = ($wsort and strlen($wsort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $wsort) : $DEFAULT_SORT;
+$rsort = ($rsort and strlen($rsort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $rsort) : $DEFAULT_SORT;
+$ssort = ($ssort and strlen($ssort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $ssort) : 'sessionstart';
 foreach ($validfields as $var) {
 	switch (substr($var, 1)) {
-		case 'sort':
-			if (!$$var) $$var = 'kills';
-			break;
 		case 'order':
 			if (!$$var or !in_array($$var, array('asc', 'desc'))) $$var = 'desc';
 			break;
@@ -70,6 +102,15 @@ foreach ($validfields as $var) {
 		        break;
 	}
 }
+
+// sanitize sorts
+$vsort = ($ps->db->column_exists(array($ps->c_plr_victims, $ps->t_plr, $ps->t_plr_profile), $vsort)) ? $vsort : $DEFAULT_SORT;
+$msort = ($ps->db->column_exists(array($ps->c_plr_maps, $ps->t_map), $msort)) ? $msort : $DEFAULT_SORT;
+$wsort = ($ps->db->column_exists(array($ps->c_plr_weapons, $ps->t_weapon), $wsort)) ? $wsort : $DEFAULT_SORT;
+if ($ps->use_roles and $ps->db->table_exists($ps->c_plr_roles)) {
+	$rsort = ($ps->db->column_exists(array($ps->c_plr_roles, $ps->t_role), $rsort)) ? $rsort : $DEFAULT_SORT;
+}
+if ($ssort != 'mapname' && $ssort != 'online') $ssort = ($ps->db->column_exists(array($ps->t_plr_sessions, $ps->t_map), $ssort)) ? $ssort : 'sessionstart';
 
 $totalranked  = $ps->get_total_players(array('allowall' => 0));
 
@@ -107,6 +148,7 @@ $player = $ps->get_player(array(
 ));
 
 $cms->theme->page_title(' for ' . $player['name'], true);
+$cms->theme->add_rel(array('rel' => 'canonical', 'href' => '/player.php?id=' . $player['plrid']));
 
 $x = substr($xml ?? '',0,1);
 if ($x == 'p') {	// player
@@ -307,6 +349,7 @@ $vtable->columns(array(
 	'killsperdeath' => array( 'label' => $cms->trans("K:D"), 'tooltip' => $cms->trans("Kills Per Death") ),
 	'skill'		=> $cms->trans("Skill"),
 ));
+$vtable->column_attr('+', 'class', 'first');
 $vtable->column_attr('name', 'class', 'left');
 $vtable->column_attr('skill', 'class', 'right');
 $ps->player_victims_table_mod($wtable);
@@ -337,6 +380,7 @@ $shades = array(
 
 $cms->theme->assign_by_ref('plr', $player);
 $cms->theme->assign(array(
+	'maintenance'		=> $maintenance,
 //	'hitbox_url'		=> ps_escape_html("weaponxml=$PHP_SELF?id=$id&xml=w") . '&' . ps_escape_html("imgpath=" . dirname($PHP_SELF) . '/img/weapons/' . $ps->conf['main']['gametype'] . '/' . $ps->conf['main']['modtype']),
     'hitbox_url'		=> 'weaponxml=' . ps_escape_html($php_scnm) . "&amp;id=$id&amp;imgpath=" . ps_escape_html(rtrim(dirname($php_scnm), '/\\') . '/img/weapons/' . $ps->conf['main']['gametype'] . $moddir) . '&amp;confxml=' . $cms->theme->parent_url() . '/hitbox/config.xml',
 	'weapons_table'		=> $wtable->render(),
@@ -345,18 +389,22 @@ $cms->theme->assign(array(
 	'roles_table'		=> $rtable ? $rtable->render() : '',
 	'victims_table'		=> $vtable->render(),
 	'sessionpager'		=> $sessionpager,
-	'mappager'		=> $mappager,
-	'rolepager'		=> $rolepager,
+	'mappager'			=> $mappager,
+	'rolepager'			=> $rolepager,
 	'victimpager'		=> $victimpager,
 	'weaponpager'		=> $weaponpager,
 	'totalranked'		=> $totalranked,
 	'max_plr_ids'		=> $MAX_PLR_IDS,
 	'top10percentile'	=> $player['rank'] ? $player['rank'] < $totalranked * 0.10 : false,
 	'top1percentile'	=> $player['rank'] ? $player['rank'] < $totalranked * 0.01 : false,
+	'i_bots'			=> $ps->invisible_bots(),
 	'shades'			=> $shades,
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
+	'title_logo'		=> ps_title_logo(),
+	'game_name'			=> ps_game_name(),
 ));
 
-$basename = basename(__FILE__, '.php');
 if ($player['plrid']) {
 	// allow mods to have their own section on the left side bar
 	$ps->player_left_column_mod($player, $cms->theme);

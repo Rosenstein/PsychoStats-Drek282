@@ -29,6 +29,7 @@ use base qw( PS::Feeder );
 use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
+#use Data::Dumper;
 
 our $VERSION = '1.00.' . (('$Rev: 530 $' =~ /(\d+)/)[0] || '000');
 
@@ -77,6 +78,10 @@ sub init {
 	# we have a previous state to deal with. We must "fast-forward" to the log we ended with.
 	if ($self->{state}{file}) {
 		my $statelog = $self->{state}{file};
+
+		# backup $self->{_logs}
+		my @ll_bu = @{$self->{_logs}};
+
 		# first: find the log that matches our previous state in the current log directory
 		while (scalar @{$self->{_logs}}) {
 			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
@@ -98,14 +103,16 @@ sub init {
 						}
 					}
 				}
-			} elsif ($cmp == -1) { # <
+			} else { # <
 				shift @{$self->{_logs}};
-			} else { # >
-				# if we get to a log that is 'newer' then the last log in our state then 
-				# we'll just continue from that log since the old log was apparently lost.
-				$::ERR->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead ...");
-				return $self->{type};
 			}
+		}
+
+		# second: if the log that matches previous state is not found parse the logs that are present
+		@{$self->{_logs}} = @ll_bu;
+		while (scalar @{$self->{_logs}}) {
+			$::ERR->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead ...");
+			return $self->{type};
 		}
 
 		if (!$self->{_curlog}) {
@@ -119,9 +126,24 @@ sub init {
 # reads the contents of the current directory
 sub _readdir {
 	my $self = shift;
-	$self->{_logs} = [ 
+	#$self->{_logs} = [ 
+	#	map {
+	#		( $_->{filename} )
+	#	}
+	#	grep { 
+	#		$_->{filename} !~ /^\./ && 
+	#		$_->{filename} !~ /WS_FTP/ && 
+	#		$_->{filename} =~ /$self->{_log_regexp}/ 
+	#	} 
+	#	$self->{sftp}->ls($self->{_dir})
+	#];
+
+	$self->{_logs} = [
 		map {
 			( $_->{filename} )
+		}
+		sort {
+			$a->{a}->{mtime} <=> $b->{a}->{mtime} || $a->{filename} cmp $b->{filename}
 		}
 		grep { 
 			$_->{filename} !~ /^\./ && 
@@ -130,9 +152,14 @@ sub _readdir {
 		} 
 		$self->{sftp}->ls($self->{_dir})
 	];
-	if (scalar @{$self->{_logs}}) {
-		$self->{_logs} = $self->{game}->logsort($self->{_logs});
-	}
+
+	#print Dumper($self->{_logs});
+	#exit();
+
+	#if (scalar @{$self->{_logs}}) {
+	#	$self->{_logs} = $self->{game}->logsort($self->{_logs});
+	#}
+	
 	# skip the last log in the directory
 	if ($self->{logsource}{skiplast}) {
 		my $log = pop(@{$self->{_logs}});

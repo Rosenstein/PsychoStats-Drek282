@@ -5,9 +5,14 @@
 <div id="ps-main">
 
 	<div id="ps-page-title">
+		{if $title_logo}
+		<div id="ps-title-logo">
+			<img src="{theme->url}/img/{$title_logo}" alt="{if $game_name}{$game_name}{else}{$title_logo}{/if}" width="64" height="64">
+		</div>
+		{/if}
 		<div class="inner">
 		<h1><#Player Awards#></h1>
-		<h2>&nbsp;</h2>
+		<h2>{if $i_bots}<small>BOT stats are included in player stats but BOT's are not listed</small>{else}&nbsp;{/if}</h2>
 		</div>
 	</div>
 
@@ -25,7 +30,7 @@
 <!--end of left column -->
 
 <!--content block-->
-<div id="ps-main-content" class="ps-page-{$page}">
+<div id="ps-main-content" class="ps-page-{$basename}">
 
 
 <div id="ps-award-frame">

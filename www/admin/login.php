@@ -23,12 +23,17 @@
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
 define("PSYCHOSTATS_LOGIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
-$cms->theme->assign('page', basename(__FILE__, '.php'));
+$cms->theme->assign('page', $basename);
 $validfields = array('submit','cancel','ref');
 $_GET['ref'] = htmlspecialchars($_GET['ref'] ?? null); //XSS Fix. Thanks to JS2007
 $cms->theme->assign_request_vars($validfields, true);
+
+// If you are on this page $cookieconsent is assumed to be true.
+$cms->session->options['cookieconsent'] = true;
+$cookieconsent = $cms->session->options['cookieconsent'];
 
 if ($cancel) {
 	gotopage("../index.php");
@@ -48,6 +53,7 @@ if ($submit) {
 	$form->validate();
 	$input = $form->values();
 	$valid = !$form->has_errors();
+	
 	// protect against CSRF attacks
 	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
 
@@ -80,12 +86,12 @@ if ($submit) {
 
 	// If authenetication was valid then we'll set the users admin flag and redirect to the previous page
 	if ($valid and !$form->has_errors()) {
-//		header("Cache-Control: no-cache, must-revalidate");
 		// assign the session a new SID
 		$cms->session->delete_session();
 		$cms->session->sid($cms->session->generate_sid());
 		$cms->session->send_cookie($cms->session->sid());
 		$cms->session->key('');
+//		header("Cache-Control: no-cache, must-revalidate");
 		// enable the session admin flag
 		$cms->session->is_admin(1);
 		// make sure the user is actually marked online as well
@@ -103,10 +109,10 @@ $cms->theme->assign(array(
 	'errors'	=> $form->errors(),
 	'form'		=> $form->values(),
 	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'	=> $cookieconsent,
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/forms.js');
 $cms->theme->add_js('js/login.js');

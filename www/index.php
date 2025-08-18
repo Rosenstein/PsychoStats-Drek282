@@ -21,10 +21,52 @@
  *	Version: $Id: index.php 506 2008-07-02 14:29:49Z lifo $
  */
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Player Stats');
+$cms->theme->page_title('Player Stats—PsychoStats');
+
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete cookies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+	previouspage($php_scnm);
+}
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// If PschoStats is in maintenance mode display a message
+if ($maintenance and !$cms->user->is_admin()) {
+	$cms->full_page_err('index', array(
+		'maintenance'	=> $maintenance,
+		'message_title'	=> $cms->trans("PsychoStats Maintenance"),
+		'message'		=> $cms->trans("Please try again later."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
+	));
+	exit();
+}
 
 // Check to see if there is any data in the database before we continue.
 $cmd = "SELECT * FROM $ps->t_plr_data LIMIT 1";
@@ -34,9 +76,12 @@ $results = $ps->db->fetch_rows(1, $cmd);
 
 // if $results is empty then we have no data in the database
 if (empty($results)) {
-	$cms->full_page_err('awards', array(
+	$cms->full_page_err('index', array(
+		'maintenance'	=> $maintenance,
 		'message_title'	=> $cms->trans("No Stats Found"),
-		'message'	=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'message'		=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
 	));
 	exit();
 }
@@ -50,13 +95,28 @@ $DEFAULT_LIMIT = 100;
 $validfields = array('sort','order','start','limit','q','search');
 $cms->theme->assign_request_vars($validfields, true);
 
-$sort = trim(strtolower($sort ?? ''));
+// SET DEFAULTS—santized
+$sort = ($sort and strlen($sort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $sort) : $DEFAULT_SORT;
 $order = trim(strtolower($order ?? ''));
-if (!preg_match('/^\w+$/', $sort)) $sort = $DEFAULT_SORT;
 if (!in_array($order, array('asc','desc'))) $order = 'desc';
 if (!is_numeric($start) || $start < 0) $start = 0;
 if (!is_numeric($limit) || $limit < 0 || $limit > 500) $limit = $DEFAULT_LIMIT;
 $q = trim($q ?? '');
+
+// sanitize sorts
+$sort = ($ps->db->column_exists(array($ps->t_plr, $ps->t_plr_profile, $ps->c_plr_data), $sort)) ? $sort : $DEFAULT_SORT;
+
+// if $q is longer than 50 characters we have a problem
+if (strlen($q) > 50) {
+	$cms->full_page_err('index', array(
+		'maintenance'	=> $maintenance,
+		'message_title'	=> $cms->trans("Invalid Search String"),
+		'message'	=> $cms->trans("Searches are limited to 50 characters in length."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
+	));
+	exit();
+}
 
 // If a language is passed from GET/POST update the user's cookie. 
 if (isset($cms->input['language'])) {
@@ -159,33 +219,37 @@ $table->columns(array(
 	'activity'		=> array( 'label' => $cms->trans("Activity"), 'modifier' => 'activity_bar' ),
 	'skill'			=> array( 'label' => $cms->trans("Skill"), 'callback' => 'plr_skill' ),
 ));
-$table->column_attr('name', 'class', 'left');
+$table->column_attr('rank', 'class', 'first');
 $table->column_attr('skill', 'class', 'right');
-//$table->column_attr('rank', 'class', 'left');
+$table->column_attr('name', 'class', 'left');
 $table->header_attr('rank', 'colspan', '2');
 $ps->index_table_mod($table);
 $cms->filter('players_table_object', $table);
 
-
 // assign variables to the theme
 $cms->theme->assign(array(
-	'q'		=> $q,
-	'search'	=> $search,
-	'results'	=> $results,
+	'maintenance'	=> $maintenance,
+	'q'				=> $q,
+	'search'		=> $search,
+	'results'		=> $results,
 	'search_blurb'	=> $cms->trans('Search criteria "<em>%s</em>" matched %d ranked players out of %d total',
 		ps_escape_html($q), $total['ranked'], $total['absolute']
 	),
-	'players'	=> $players,
+	'players'		=> $players,
 	'players_table'	=> $table->render(),
-	'total'		=> $total,
-	'pager'		=> $pager,
+	'total'			=> $total,
+	'pager'			=> $pager,
+	'i_bots'		=> $ps->invisible_bots(),
 	'language_list'	=> $cms->theme->get_language_list(),
 	'theme_list'	=> $cms->theme->get_theme_list(),
-	'language'	=> $cms->theme->language,
+	'language'		=> $cms->theme->language,
+	'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'	=> $cookieconsent,
+	'title_logo'	=> ps_title_logo(),
+	'game_name'		=> ps_game_name(),
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 //$cms->theme->add_js('js/index.js');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 

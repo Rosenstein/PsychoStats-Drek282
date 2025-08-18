@@ -87,7 +87,7 @@ function query($query, $resetdata=0) {
 			if (is_array($res)) {
 				$result += $res;
 			} else {
-//				trigger_reror("Server did not respond to '$q' query", E_USER_WARNING);
+				trigger_error("Server did not respond to '$q' query", E_USER_WARNING);
 			}
 		} else {
 			trigger_error("Invalid query specified ($q)", E_USER_WARNING);
@@ -151,7 +151,7 @@ function maxretries() {
 
 // connects the socket for reading/writting
 function _connectsocket($ip, $port, $proto='udp') {
-	if ($this->DEBUG) print "DEBUG: Opening socket to $ip:$port >>>\n";
+	if ($this->DEBUG) print nl2br("DEBUG: Opening socket to $ip:$port >>>\n");
 	$this->sock = @fsockopen("$proto://$ip", $port, $this->errno, $this->errstr);
 	$this->_set_timeout($this->conf['timeout']);
 	return $this->sock;
@@ -247,7 +247,7 @@ function hexdump($string, $maxwidth=16) {
 			$curwidth = $maxwidth;
 		}
 		if ($curwidth >= $maxwidth) {
-			$output .= " ";
+			$output .= "| ";
 			foreach ($bytes as $b) {
 				if ($b <= 32 or $b >= 127) {
 //				if ($b <= 32) {
@@ -263,7 +263,7 @@ function hexdump($string, $maxwidth=16) {
 			$curwidth++;
 		}
 	}
-	return $output;
+	return "<pre>" . $output . "</pre>\n";
 }
 
 } // end of PQ class

@@ -1164,6 +1164,12 @@ sub daily_decay {
 	my ($newest) = $db->get_list("SELECT MAX(lasttime) FROM $db->{c_plr_data}");
 #	my $oldest = $newest - 60*60*$decay_hours;
 
+	# return if no "lasttime" in c_plr_data
+	if (!$newest) {
+		$::ERR->info("Daily 'decay' process skipped, no data in dynamic player data table.");
+		return;
+	}
+
 	$cmd = "SELECT plrid,lastdecay,skill,($newest - lastdecay) / ($decay_hours*60*60) AS length FROM $db->{t_plr} WHERE skill > " . $db->quote($self->{baseskill});
 	if (!($sth = $db->query($cmd))) {
 		$db->fatal("Error executing DB query:\n$cmd\n" . $db->errstr . "\n--end of error--");
@@ -1181,7 +1187,7 @@ sub daily_decay {
 		} else {	# decay eq 'percent'
 			$newskill -= $newskill * $value / 100;
 		}
-		$newskill = $self->{baseskill} if $newskill < $self->{baseskill};
+		#$newskill = $self->{baseskill} if $newskill < $self->{baseskill};
 #		print "id $id: len: $length, val: $value, old: $skill, new: $newskill\n";
 		$db->update($db->{t_plr}, { lastdecay => $newest, skill => $newskill }, [ plrid => $id ]);
 	}

@@ -204,15 +204,16 @@ function values() {
 }
 
 function value($var, $modified = false) {
-	return $modified ? $this->modify($var) : $this->input[$var];
+	return $modified ? $this->modify($var) : $this->input[$var] ?? null;
 }
 
 // get/set an error string for a field
 function error($name, $err = null) {
+	$this->errors[$name] ??= null;
 	if ($err !== null) {
 		$this->errors[$name] = $err;
 	} else {
-		return $this->errors[$name] ??= null;
+		return $this->errors[$name];
 	}
 }
 
@@ -342,10 +343,14 @@ function key_is_valid(&$session, $key_name = 'key', $error = true) {
 	$valid = $session->verify_key($key);
 	if ($error and !$valid) {
 		$this->error('fatal', 
-			"Invalid key token! Using the 'refresh' button in your browser or waiting too long to submit " .
-			"a request can cause problems on these forms. " . 
-			"If you continue to encounter problems then go back to the previous page and try again."
+			"Your session has expired." .
+			"Please try again."
 		);
+		// assign the session a new SID
+		$session->delete_session();
+		$session->sid($session->generate_sid());
+		$session->send_cookie($session->sid());
+		$session->key('');
 	}
 	return $valid;
 }

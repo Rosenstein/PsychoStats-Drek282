@@ -22,6 +22,7 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
 include_once(PS_ROOTDIR . "/includes/class_themeManager.php");
@@ -121,8 +122,7 @@ if (!empty($action)) $action = strtolower($action);
 if ($id and in_array($action, array('default','disable','enable','uninstall'))) {
 	$t = new PsychoThemeManager($ps);
 	if (!$t->load_theme_db($id)) {
-		$cms->full_page_err(basename(__FILE__, '.php'), array( 'message' => $cms->trans("Invalid Theme Specified") ));
-		exit();		
+		previouspage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'themes.php' )));			
 	}
 
 	$res = 'success';
@@ -222,7 +222,6 @@ $cms->theme->assign(array(
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/themes.js');
 $cms->theme->add_js('js/message.js');

@@ -85,7 +85,7 @@ function simple_interpolate($str, $tokens, $fill = false) {
 			die("ENDLESS LOOP in simple_interpolate (line " . __LINE__ . ") with string '$str'");
 		}
 		$var1	= strtolower($m[1][0]);
-		$var2 	= $m[2][0] ? strtolower($m[2][0]) : '';
+		$var2 	= isset($m[2][0]) ? strtolower($m[2][0]) : '';
 		$idx	= $m[0][1];	// get position of where match begins
 		if (array_key_exists($var1, $tokens)) {
 			if (!empty($var2)) {
@@ -389,9 +389,9 @@ function url($arg = array()) {
 
 function remote_addr($alt='') {
 	$ip = $alt;
-	if ($_SERVER['HTTP_X_FORWARDED_FOR'])  {
+	if (isset($_SERVER['HTTP_X_FORWARDED_FOR']))  {
 		$ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-	} elseif ($_SERVER['REMOTE_ADDR']) {
+	} elseif (isset($_SERVER['REMOTE_ADDR'])) {
 		$ip = $_SERVER['REMOTE_ADDR'];
 	}
 	return $ip;
@@ -403,7 +403,10 @@ function previouspage($alt=NULL) {
 	if ($alt==NULL) $alt = 'index.php';
 	if ($_REQUEST['ref']) {
 //		$ref = (get_magic_quotes_gpc()) ? stripslashes($_REQUEST['ref']) : $_REQUEST['ref'];
-		$ref = $_REQUEST['ref'];
+		// Sanitize $_REQUEST['ref'].
+		$ref = htmlspecialchars($_REQUEST['ref']); //XSS Fix. Thanks to JS2007
+		// Don't allow links to external pages or long uris.
+		if (strlen($ref) > 64 or preg_match('/http(?:s|):\/\//', $ref)) $ref = 'index.php';
 		gotopage($ref);				// jump to previous page, if specified
 	} else {
 		gotopage($alt);
@@ -1185,21 +1188,33 @@ function deleteTree($folder, $keepRootFolder) {
 		return @unlink($folder); // Delete file/link.
 	}
 
-// Delete all children.
-	$files = new \RecursiveIteratorIterator(
-		new \RecursiveDirectoryIterator($folder, \RecursiveDirectoryIterator::SKIP_DOTS),
-		\RecursiveIteratorIterator::CHILD_FIRST
+	// Set permissions and delete all children.
+	$files = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator($folder, RecursiveDirectoryIterator::SKIP_DOTS),
+		RecursiveIteratorIterator::CHILD_FIRST
 	);
 
 	foreach ($files as $fileinfo) {
+		chmod($fileinfo->getRealPath(), 0775);
 		$action = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
 		if (!@$action($fileinfo->getRealPath())) {
 			return false; // Abort due to the failure.
 		}
 	}
 
-// Delete the root folder itself?
-	return (!$keepRootFolder ? @rmdir($folder) : true);
+	// Delete the root folder itself?
+	if (!$keepRootFolder) {
+		chmod($folder, 0775);
+		rmdir($folder);
+		// If this fails try unlink.
+		if (file_exists($folder)) {
+			$mask = "*";
+   			array_map( "unlink", glob( $mask ) );
+			rmdir($folder);
+			return (file_exists($folder)) ? false : true;
+		}
+	}
+	return true;
 }
 
 // Returns true if url exists.

@@ -22,11 +22,62 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
 include(PS_ROOTDIR . "/includes/class_Color.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Stats Overview');
+$cms->theme->page_title('Stats Overview—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
+
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+	previouspage($php_scnm);
+}
+
+// Check to see if there is any data in the database before we continue.
+$cmd = "SELECT * FROM $ps->t_plr_data LIMIT 1";
+
+$results = array();
+$results = $ps->db->fetch_rows(1, $cmd);
+
+// if $results is empty then we have no data in the database
+if (empty($results)) {
+	$cms->full_page_err('overview', array(
+		'message_title'	=> $cms->trans("No Stats Found"),
+		'message'	=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
+	));
+	exit();
+}
+unset ($results);
 
 // default pie slice colors (see styles.xml in the theme to change)
 $pie_slice_colors = array(
@@ -43,7 +94,7 @@ $cms->theme->assign_request_vars($validfields, true);
 if (is_numeric($ip) and $ip > 0) {
 	$limit = min($ip, 100);
 	$fields =
-		'p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,' .
+		'p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,pp.cc,' .
 		'c.kills,c.headshotkills,c.onlinetime,c.killsperdeath kpd';
 
 	// return a list of highest ranked players that have lat,lng values set
@@ -51,19 +102,20 @@ if (is_numeric($ip) and $ip > 0) {
 		"SELECT $fields,pp.latitude lat,pp.longitude lng " .
 		"FROM $ps->t_plr_profile pp, $ps->t_plr p, $ps->c_plr_data c " . 
 		"WHERE p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
-		"pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL " . 
+		"pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL AND pp.cc <>'A2' " . 
 		"ORDER BY p.rank,p.skill DESC,c.kills DESC LIMIT $limit"
 	);
+	$profiles = array_reverse($profiles);
 	if ($profiles) $limit -= count($profiles);
 
 	// return a list of IP's of the highest ranking players.
 	$list = $ps->db->fetch_rows(1,
 		"SELECT DISTINCT ip.plrid, INET_NTOA(ipaddr) ipaddr, p.plrid," .
-		"p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills," .
+		"p.rank,p.skill,p.activity,pp.name,pp.icon,pp.cc,c.kills,c.headshotkills," .
 		"c.onlinetime,c.killsperdeath kpd " .
 		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
 		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
-		"pp.latitude IS NULL AND pp.longitude IS NULL AND " . 
+		"pp.latitude IS NULL AND pp.longitude IS NULL AND pp.cc <>'A2' AND " . 
 		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
 		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
 		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
@@ -71,6 +123,7 @@ if (is_numeric($ip) and $ip > 0) {
 		"GROUP BY ip.plrid " .
 		"ORDER BY p.rank,p.skill DESC,c.kills DESC LIMIT $limit"
 	);
+	$list = array_reverse($list);
 	$iplist = array();
 	foreach ($list as $p) {
 		$iplist[$p['ipaddr']] = $p;
@@ -141,12 +194,15 @@ if ($ps->conf['theme']['map']['google_key']) {
 
 // assign variables to the theme
 $cms->theme->assign(array(
-	'page'			=> basename($php_scnm,'.php'),
+	'maintenance'		=> $maintenance,
 	'activity_colors' 	=> $colors,
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
+	'title_logo'		=> ps_title_logo(),
+	'game_name'			=> ps_game_name(),
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 if ($ps->conf['theme']['map']['google_key']) {
 	$p = host_secure() ? 'https' : 'http';
 	$cms->theme->add_js($p . '://maps.googleapis.com/maps/api/js?key=' . $ps->conf['theme']['map']['google_key'] . '&callback=init_google', 'defer');
@@ -267,7 +323,7 @@ function return_ofc_24() {
 	// build a list of hours in the proper order
 	for ($h=$newest; count($hours)<24; $h--) {
 		if ($h < 0) $h = 23;
-		$hours[ sprintf('%02d:00', $h) ] = 'null';
+		$hours[ sprintf('%02d:00', $h) ] = '0';
 	}
 	$hours = array_reverse($hours);
 

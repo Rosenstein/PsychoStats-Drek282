@@ -22,17 +22,47 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Player History');
+$cms->theme->page_title('Player History—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
 
 $validfields = array(
 	'id',
-	'start','sort','order',
+	'start','sort','order','limit',
 	'sstart','ssort','sorder','slimit',
 );
 $cms->theme->assign_request_vars($validfields, true);
+
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_opts');
+	}
+}
 
 if (!$start or $start < 0) $start = 0;
 if (!$limit or $limit < 0 or $limit > 100) $limit = 31;
@@ -57,6 +87,7 @@ $player = $ps->get_player(array(
 ));
 
 $cms->theme->page_title(' for ' . $player['name'], true);
+$cms->theme->add_rel(array('rel' => 'canonical', 'href' => '/plrhist.php?id=' . $player['plrid']));
 
 $history = $ps->get_player_days(array(
 	'plrid'		=> $id,
@@ -88,6 +119,8 @@ $htable->columns(array(
 	'onlinetime' 		=> array( 'label' => $cms->trans("Online"), 'modifier' => 'compacttime' ),
 	'dayskill' 		=> array( 'label' => $cms->trans("Skill") ),
 ));
+$htable->column_attr('statdate','class','secondary');
+$htable->column_attr('dayskill','class','right');
 $cms->filter('player_history_table_object', $htable);
 
 // build player session table
@@ -106,6 +139,8 @@ $stable->columns(array(
 	'accuracy'		=> array( 'label' => $cms->trans("Acc"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Accuracy") ),
 	'skill' 		=> array( 'label' => $cms->trans("Skill") ),
 ));
+$htable->column_attr('sessionstart','class','secondary');
+$stable->column_attr('skill','class','right');
 $cms->filter('player_session_table_object', $stable);
 
 $sessionpager = pagination(array(
@@ -122,18 +157,20 @@ $sessionpager = pagination(array(
 
 $cms->theme->assign_by_ref('plr', $player);
 $cms->theme->assign(array(
-	'history'		=> $history,
+	'maintenance'		=> $maintenance,
+	'history'			=> $history,
 	'history_table'		=> $htable->render(),
 	'sessions_table'	=> $stable->render(),
-	'days'			=> $days,
+	'days'				=> $days,
 	'total_days'		=> $days ? count($days) : 0,
 	'totalranked'		=> $totalranked,
 	'top10percentile'	=> $player['rank'] ? $player['rank'] < $totalranked * 0.10 : false,
 	'top1percentile'	=> $player['rank'] ? $player['rank'] < $totalranked * 0.01 : false,
 	'sessionpager'		=> $sessionpager,
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
 ));
 
-$basename = basename(__FILE__, '.php');
 if ($player['plrid']) {
 	// allow mods to have their own section on the left side bar
 	$ps->player_left_column_mod($player, $cms->theme);

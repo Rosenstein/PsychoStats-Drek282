@@ -22,12 +22,38 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Edit Player Profile');
+$cms->theme->page_title('Edit Player Profile—PsychoStats');
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_opts');
+	}
+	previouspage($php_scnm);
+}
 
 $validfields = array('ref','id','del','submit','cancel');
+$_GET['ref'] = htmlspecialchars($_GET['ref'] ?? null); //XSS Fix. Thanks to JS2007
 $cms->theme->assign_request_vars($validfields, true);
 
 $message = '';
@@ -56,7 +82,7 @@ if ($id) {
 
 	if (!$plr) {
 		$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
-		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		$cms->full_page_err($basename, $data);
 		exit();
 	}
 	if ($plr['userid']) {
@@ -69,13 +95,13 @@ if ($id) {
 	}
 } else {
 	$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
-	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	$cms->full_page_err($basename, $data);
 }
 
 // check privileges to edit this player
 if (!ps_user_can_edit_player($plr)) {
 	$data = array( 'message' => $cms->trans("Insufficient privileges to edit player!") );
-	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	$cms->full_page_err($basename, $data);
 	exit;
 }
 
@@ -84,7 +110,7 @@ if (!ps_user_can_edit_player($plr)) {
 if ($cms->user->is_admin() and $del and $id and $plr['plrid'] == $id) {
 	if (!$ps->delete_player($id)) {
 		$data = array( 'message' => $cms->trans("Error deleting player: " . $ps->db->errstr) );
-		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		$cms->full_page_err($basename, $data);
 		exit();
 	}
 	// don't use previouspage, since chances are the player.php is the referrer and will no longer be valid.
@@ -327,20 +353,19 @@ if ($ps->conf['main']['uniqueid'] == 'ipaddr') {
 $allowed_html_tags = str_replace(',', ', ', $ps->conf['theme']['format']['allowed_html_tags']);
 if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->translate("none") . '</em>';
 $cms->theme->assign(array(
-	'page'		=> basename(__FILE__, '.php'), 
-	'errors'	=> $form->errors(),
-	'plr'		=> $plr,
-	'plr_user'	=> $plr_user->to_form_input(),
-	'plr_uniqueid'	=> $uid,
-	'allowed_html_tags' => $allowed_html_tags,
-	'accesslevels'	=> $plr_user->accesslevels(),
-	'form'		=> $form->values(),
-	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'errors'				=> $form->errors(),
+	'plr'					=> $plr,
+	'plr_user'				=> $plr_user->to_form_input(),
+	'plr_uniqueid'			=> $uid,
+	'allowed_html_tags' 	=> $allowed_html_tags,
+	'accesslevels'			=> $plr_user->accesslevels(),
+	'form'					=> $form->values(),
+	'form_key'				=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'			=> $cookieconsent,
 	'allow_username_change' => $allow_username_change, 
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/forms.js');
 if ($ps->conf['theme']['map']['google_key']) {

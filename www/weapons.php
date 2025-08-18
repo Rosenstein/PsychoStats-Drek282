@@ -22,10 +22,49 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Weapon Usage');
+$cms->theme->page_title('Weapon Usage—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
+
+// change this if you want the default sort of the player listing to be something else like 'kills'
+$DEFAULT_SORT = 'kills';
+
+$validfields = array('sort','order','xml','v');
+$cms->theme->assign_request_vars($validfields, true);
+
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+	previouspage($php_scnm);
+}
 
 // Check to see if there is any data in the database before we continue.
 $cmd = "SELECT * FROM $ps->t_plr_data LIMIT 1";
@@ -35,27 +74,27 @@ $results = $ps->db->fetch_rows(1, $cmd);
 
 // if $results is empty then we have no data in the database
 if (empty($results)) {
-	$cms->full_page_err('awards', array(
+	$cms->full_page_err($basename, array(
+		'maintenance'	=> $maintenance,
 		'message_title'	=> $cms->trans("No Stats Found"),
-		'message'	=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'message'		=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
 	));
 	exit();
 }
 unset ($results);
 
-// change this if you want the default sort of the player listing to be something else like 'kills'
-$DEFAULT_SORT = 'kills';
-
-$validfields = array('sort','order','xml','v');
-$cms->theme->assign_request_vars($validfields, true);
-
+// SET DEFAULTS—sanitized
 $v = strtolower($v ?? '');
-$sort = trim(strtolower($sort ?? ''));
+$sort = ($sort and strlen($sort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $sort) : $DEFAULT_SORT;
 $order = trim(strtolower($order ?? ''));
 $start = 0;
 $limit = 100;
-if (!preg_match('/^\w+$/', $sort)) $sort = $DEFAULT_SORT;
 if (!in_array($order, array('asc','desc'))) $order = 'desc';
+
+// sanitize sorts
+$sort = ($ps->db->column_exists(array($ps->c_weapon_data, $ps->t_weapon), $sort)) ? $sort : $DEFAULT_SORT;
 
 $stats = $ps->get_sum(array('kills','damage'), $ps->c_plr_data);
 
@@ -139,6 +178,7 @@ $table->columns(array(
 	'damage' 		=> array( 'label' => $cms->trans("Dmg"), 'callback' => 'abbr_dmg', 'tooltip' => $cms->trans("Damage") ),
 ));
 $table->column_attr('uniqueid', 'class', 'first');
+$table->column_attr('class', 'class', 'secondary');
 $table->column_attr('_killspct', 'class', 'pct_bar');
 $table->header_attr('kills', 'colspan', '2');
 //$table->header_attr('headshotkillspct', 'colspan', '2');
@@ -147,17 +187,22 @@ $cms->filter('weapons_table_object', $table);
 
 // assign variables to the theme
 $cms->theme->assign(array(
+	'maintenance'		=> $maintenance,
 	'weapons_by_class'	=> $weaponclasses,	// allow a theme to use either ...
-	'weapons'		=> $weapons,		// ... way to display weapons
+	'weapons'			=> $weapons,		// ... way to display weapons
 	'weapons_table'		=> $table->render(),
 	'weapon_classes'	=> array_keys($weaponclasses),
 	'totalweapons'		=> $totalweapons,
 	'totalkills'		=> $stats['kills'],
 	'totaldamage'		=> $stats['damage'],
+	'i_bots'			=> $ps->invisible_bots(),
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
+	'title_logo'		=> ps_title_logo(),
+	'game_name'			=> ps_game_name(),
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 //$cms->theme->add_css('css/tabs.css');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 

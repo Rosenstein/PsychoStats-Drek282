@@ -22,16 +22,26 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Player Registration');
+$cms->theme->page_title('Player Registration—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
 
 $validfields = array('submit','cancel','ref');
+$_GET['ref'] = htmlspecialchars($_GET['ref'] ?? null); //XSS Fix. Thanks to JS2007
 $cms->theme->assign_request_vars($validfields, true);
 
 //if ($cancel or $cms->user->logged_in()) previouspage('index.php');
 if ($cancel) previouspage('index.php');
+
+// If you are on this page $cookieconsent is assumed to be true.
+$cms->session->options['cookieconsent'] = true;
+$cookieconsent = $cms->session->options['cookieconsent'];
 
 switch ($ps->conf['main']['uniqueid']) {
 	case 'worldid': $uniqueid_label = $cms->trans("Steam ID"); break;
@@ -108,8 +118,11 @@ if ($submit) {
 			// load this player
 			$plr = $ps->get_player($plr['plrid'], true);
 			$cms->theme->assign(array(
+				'maintenance'	=> $maintenance,
 				'plr'	=> $plr,
-				'reg'	=> $userinfo, 
+				'reg'	=> $userinfo,
+				'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+				'cookieconsent'	=> $cookieconsent,
 			));
 
 			// if registration is open log the user in
@@ -118,7 +131,7 @@ if ($submit) {
 			}
 	
 			// display the registration confirmation
-			$basename = basename(__FILE__, '.php') . '_confirmation';
+			$basename = $basename . '_confirmation';
 			$cms->theme->add_css('css/forms.css');
 			$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 			exit;
@@ -138,15 +151,16 @@ if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->
 
 // assign variables to the theme
 $cms->theme->assign(array(
-//	'plr'		=> $ps->get_player(6375, true),
-	'errors'	=> $form->errors(),
-	'form'		=> $form->values(),
-	'uniqueid_label' => $uniqueid_label,
-	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'maintenance'		=> $maintenance,
+//	'plr'				=> $ps->get_player(6375, true),
+	'errors'			=> $form->errors(),
+	'form'				=> $form->values(),
+	'uniqueid_label'	=> $uniqueid_label,
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/forms.js');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');

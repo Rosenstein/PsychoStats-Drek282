@@ -22,24 +22,60 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
 include_once(PS_ROOTDIR . "/includes/PS/Heatmap.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Map Stats');
+$cms->theme->page_title('Map Stats—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
 
 // how many players per stat
+$DEFAULT_SORT = 'kills';
 $MAX_PLAYERS = 10;
 
 $validfields = array('id', 'sort', 'order', 'start', 'limit');
 $cms->theme->assign_request_vars($validfields, true);
 
-$sort = strtolower($sort ?? '');
-$order = strtolower($order ?? '');
-if (!preg_match('/^\w+$/', $sort)) $sort = 'kills';
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+}
+
+// SET DEFAULTS—santized
+$sort = ($sort and strlen($sort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $sort) : $DEFAULT_SORT;
+$order = trim(strtolower($order ?? ''));
 if (!in_array($order, array('asc','desc'))) $order = 'desc';
 if (!is_numeric($start) || $start < 0) $start = 0;
 if (!is_numeric($limit) || $limit < 0) $limit = 10;
+
+// sanitize sorts
+$sort = ($ps->db->column_exists(array($ps->c_map_data, $ps->t_map), $sort)) ? $sort : $DEFAULT_SORT;
 
 $topten = array();
 $totalmaps = $ps->get_total_maps();
@@ -52,16 +88,21 @@ $maps = $ps->get_map_list(array(
 
 // a map name was given; look up the ID for it
 if (!is_numeric($id) and !empty($id)) {
-	list($id) = $ps->db->fetch_list("SELECT mapid FROM $ps->t_map WHERE uniqueid=" . $ps->db->escape($id, true));
+	if ($ps->db->fetch_list("SELECT mapid FROM $ps->t_map WHERE uniqueid=" . $ps->db->escape($id, true))) {
+		list($id) = $ps->db->fetch_list("SELECT mapid FROM $ps->t_map WHERE uniqueid=" . $ps->db->escape($id, true));
+	} else {
+		$fn = $id;
+		$id = null;
+	}
 }
 
 $map = $ps->get_map(array( 
 	'mapid' => $id 
 ));
 
-$cms->theme->page_title(' for ' . $map['uniqueid'], true);
+($id) ? $cms->theme->page_title(' for ' . $map['uniqueid'], true) : $cms->theme->page_title(' unavailable', true);
 
-if ($map['mapid']) {
+if (isset($map['mapid'])) {
 
 	$heat = new PS_Heatmap($ps);
 	$map['total_heatmaps'] = $heat->total_heatmap_images($map['mapid']);
@@ -105,17 +146,22 @@ $shades = array(
 );
 
 $cms->theme->assign(array(
-	'maps'		=> $maps,
-	'map'		=> $map,
-	'mapimg'	=> $ps->mapimg($map, array( 'noimg' => '' )),
-	'totalmaps'	=> $totalmaps,
-	'topten'	=> $topten,
+	'maintenance'	=> $maintenance,
+	'maps'			=> $maps,
+	'map'			=> $map,
+	'mapimg'		=> $ps->mapimg($map, array( 'noimg' => '' )),
+	'totalmaps'		=> $totalmaps,
+	'topten'		=> $topten,
 	'totaltopten'	=> count($topten),
 	'shades'		=> $shades,
+	'i_bots'		=> $ps->invisible_bots(),
+	'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'	=> $cookieconsent,
+	'title_logo'	=> ps_title_logo(),
+	'game_name'		=> ps_game_name(),
 ));
 
-$basename = basename(__FILE__, '.php');
-if ($map['mapid']) {
+if (isset($map['mapid'])) {
 	// allow mods to have their own section on the left side bar
 	$ps->map_left_column_mod($map, $cms->theme);
 
@@ -124,7 +170,7 @@ if ($map['mapid']) {
 } else {
 	$cms->full_page_err($basename, array(
 		'message_title'	=> $cms->trans("No Map Found!"),
-		'message'	=> $cms->trans("Invalid map ID specified.") . " " . $cms->trans("Please go back and try again.")
+		'message'	=> $cms->trans("Invalid map ID specified.") . " " . $cms->trans("No stats available for $fn.")
 	));
 }
 

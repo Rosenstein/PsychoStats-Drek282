@@ -33,7 +33,7 @@ if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FIL
 
 // Global PsychoStats version and release date. 
 // These are updated automatically by the release packaging script 'rel.pl'.
-define("PS_VERSION", '3.2.8b');
+define("PS_VERSION", '3.2.8n');
 define("PS_RELEASE_DATE", 'today');
 
 // define the directory where we live. Since this file is always 1 directory deeper
@@ -155,5 +155,25 @@ $cms = new PsychoCMS(array(
 ));
 
 $cms->init();
+
+///////////////////////////////////////////////////////////////
+///////////    Code that applies to every page.    ////////////
+///////////////////////////////////////////////////////////////
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
+
+// Do not load if this is one of the image scripts.
+if (!defined("PSFILE_IMGCOMMON_PHP")) {
+
+	// Is PsychoStats in maintenance mode?
+	$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+	// Is there a notice to display?
+	if ($ps->conf['main']['notice']['enable']) {
+		$cms->theme->assign('notice', $ps->conf['main']['notice']['notice'] ?? null);
+	} else {
+		$cms->theme->assign('notice', null);
+	}
+}
 
 ?>

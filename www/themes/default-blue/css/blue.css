@@ -91,3 +91,9 @@ body.psychostats,
 #ps-container .ps-server-main .hdr {
 	background: url(../img/table-header-bg.jpg) repeat-x;
 }
+
+/* NoScript Error */
+#no-js {
+	background-color: rgba(197,206,220,0.8);
+}
+

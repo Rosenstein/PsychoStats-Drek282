@@ -22,10 +22,22 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Please Login');
+$cms->theme->page_title('Login—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
+
+// create the form variable
+$form = $cms->new_form();
+
+// If you are on this page $cookieconsent is assumed to be true.
+$cms->session->options['cookieconsent'] = true;
+$cookieconsent = $cms->session->options['cookieconsent'];
 
 $validfields = array('submit','cancel','ref');
 $_GET['ref'] = htmlspecialchars($_GET['ref'] ?? null); //XSS Fix. Thanks to JS2007
@@ -35,7 +47,6 @@ if ($cancel or $cms->user->logged_in()) previouspage('index.php');
 
 $bad_pw_error = $cms->trans('Invalid username or password');
 
-$form = $cms->new_form();
 $form->default_modifier('trim');
 $form->default_validator('blank', $cms->trans("This field can not be blank"));
 $form->field('username', 'user_exists');
@@ -47,12 +58,8 @@ if ($submit) {
 	$input = $form->values();
 	$valid = !$form->has_errors();
 	// protect against CSRF attacks
-	// Wait a minute, I can't do this for logins, otherwise the overall
-	// login popup window won't work with CSRF enabled. This should be fine,
-	// CSRF is more targeted at user requests and not logins, I think.
-//	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
+	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
 
-	$u = null;
 	if ($valid) {
 		// attempt to authenticate
 		$id = $cms->user->auth($input['username'], $input['password']);
@@ -62,6 +69,8 @@ if ($submit) {
 			if (!$u->load($id)) {
 				$form->error('fatal', $cms->trans("Error retreiving user from database") . ":" . $u->loaderr);
 				$valid = false;
+			} else {
+				$cms->user = $u;
 			}
 		} else { // auth failed
 			$form->error('fatal', $bad_pw_error);
@@ -84,7 +93,7 @@ if ($submit) {
 		$valid = false;
 	}
 
-	// If authenetication was valid then we'll set the users online flag and redirect to their previous page
+	// If authentication was valid then we'll set the users online flag and redirect to their previous page
 	if (!$form->has_errors()) {
 //		header("Cache-Control: no-cache, must-revalidate");
 		$cms->session->online_status(1, $u->userid());
@@ -97,17 +106,16 @@ if ($submit) {
 	}
 }
 
-//if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
-
 // assign variables to the theme
 $cms->theme->assign(array(
-	'errors'	=> $form->errors(),
-	'form'		=> $form->values(),
-	'form_key'	=> '', //$ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'maintenance'	=> $maintenance,
+	'errors'		=> $form->errors(),
+	'form'			=> $form->values(),
+	'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'	=> $cookieconsent,
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_js('js/forms.js');
 $cms->theme->add_css('css/forms.css');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');

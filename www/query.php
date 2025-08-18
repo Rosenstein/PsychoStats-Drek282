@@ -22,10 +22,8 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-
 require_once(PS_ROOTDIR . "/includes/class_PQ.php");
 
 // collect url parameters ...
@@ -128,7 +126,6 @@ $cms->theme->assign(array(
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->tiny_page($basename, $basename);
 
 // --- Local functions --------------

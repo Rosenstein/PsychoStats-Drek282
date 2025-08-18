@@ -22,10 +22,15 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Role Stats');
+$cms->theme->page_title('Role Stats—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
 
 // default sort for the roles listing
 $DEFAULT_SORT = 'kills';
@@ -33,11 +38,41 @@ $DEFAULT_SORT = 'kills';
 $validfields = array('id','order','sort');
 $cms->theme->assign_request_vars($validfields, true);
 
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+}
+
+// SET DEFAULTS—sanitized
 $limit = 25;
-$sort = trim(strtolower($sort ?? ''));
+$sort = ($sort and strlen($sort) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $sort) : $DEFAULT_SORT;
 $order = trim(strtolower($order ?? ''));
-if (!preg_match('/^\w+$/', $sort)) $sort = $DEFAULT_SORT;
 if (!in_array($order, array('asc','desc'))) $order = 'desc';
+
+// sanitize sorts
+$sort = ($ps->db->column_exists(array($ps->c_role_data, $ps->t_role), $sort)) ? $sort : $DEFAULT_SORT;
 
 $totalroles = $ps->get_total_roles();
 $roles = $ps->get_role_list(array(
@@ -103,16 +138,19 @@ $ps->role_players_table_mod($table);
 $cms->filter('players_table_object', $table); // same as index.php players table
 
 $cms->theme->assign(array(
-	'roles'		=> $roles,
-	'role'		=> $role,
-	'roleimg'	=> $ps->roleimg($role, array('path' => 'large', 'noimg' => '') ),
+	'maintenance'	=> $maintenance,
+	'roles'			=> $roles,
+	'role'			=> $role,
+	'roleimg'		=> $ps->roleimg($role, array('path' => 'large', 'noimg' => '') ),
 	'totalroles'	=> $totalroles,
-	'players'	=> $players,
+	'players'		=> $players,
 	'players_table'	=> $table->render(),
 	'totalplayers'	=> count($players),
+	'i_bots'		=> $ps->invisible_bots(),
+	'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'	=> $cookieconsent,
 ));
 
-$basename = basename(__FILE__, '.php');
 if ($role['roleid']) {
 	$cms->theme->add_css('css/2column.css');	// this page has a left column
 	$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');

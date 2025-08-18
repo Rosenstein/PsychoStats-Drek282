@@ -22,9 +22,10 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
-$cms->theme->assign('page', basename(__FILE__, '.php'));
+$cms->theme->assign('page', $basename);
 
 /* 
 	ct = conftype we're currently editing. Which can have multiple sections within it
@@ -33,6 +34,9 @@ $cms->theme->assign('page', basename(__FILE__, '.php'));
 
 $validfields = array('submit', 'cancel', 'new', 'ct', 's', 'q', 'adv');
 $cms->theme->assign_request_vars($validfields, true);
+
+$form = $cms->new_form();
+$form->default_modifier('trim');
 
 $message = '';
 $cms->theme->assign_by_ref('message', $message);
@@ -60,6 +64,15 @@ $list = $ps->db->fetch_rows(1,
 	"HAVING COUNT(*) > 0 " .
 	"ORDER BY conftype"
 );
+
+// if $list is empty no results have been returned on a search
+if (!$list) {
+	$message = $cms->message('success', array(
+		'message_title' => $cms->trans("No Matching Configuration Options"),
+		'message'	=> $cms->trans("No results returned for search query")
+	));
+}
+
 $sections = array();
 foreach ($list as $c) {
     $sections[ $c['conftype'] ] = $sections[ $c['conftype'] ] ?? null;
@@ -74,7 +87,7 @@ foreach ($list as $c) {
 // make sure we're trying to edit a valid conftype
 $sec_keys = array_keys($sections);
 if (!array_key_exists($ct, $sections)) {
-	$ct = $sec_keys[0];
+	$ct = $sec_keys[0] ?? null;
 	if (!$ct) $ct = 'main';
 }
 unset($sec_keys);
@@ -93,7 +106,7 @@ foreach ($list as $l) {
 // but we need to massage it into a slightly different format for easier use.
 $list = $ps->load_config_layout($ct, $where);
 $config_layout = array( 'general' => array() );	// we want 'general' first
-if (is_array($sections[$ct])) {
+if (is_array($sections[$ct] ?? null)) {
 	foreach ($sections[$ct] as $sec) {
         $list[$ct][$sec] = $list[$ct][$sec] ?? null;
 		$config_layout[$sec] = $list[$ct][$sec];
@@ -111,15 +124,13 @@ unset($list);
 // make sure the section is valid
 if (empty($s)) $s = 'general';
 if (!is_array($config_layout[$s] ?? null)) {
-	$s = $sections[$ct][0];		// default to first section found
+	$s = $sections[$ct][0] ?? null;		// default to first section found
 }
 
 
 $cms->crumb("Config", ps_url_wrapper(array( '_base' => $php_scnm, 'ct' => $ct )));
 $cms->crumb($ct);
 
-$form = $cms->new_form();
-$form->default_modifier('trim');
 // setup form fields. each field is actually the ID of the variable so I don't have to worry about
 // naming conflicts between sections (eg: maxdays and errlogs.maxdays)
 foreach ($config_layout as $sec => $list) {
@@ -130,6 +141,20 @@ foreach ($config_layout as $sec => $list) {
 		$form->field($o['id'], $o['verifycodes']);
 	}
 }
+
+// we want the credits at the end of the theme section
+if (isset($sections['theme']) and is_array($sections['theme'])) {
+	foreach ($sections['theme'] as $st => $val) {
+		if ($val != 'credits') continue;
+		$mv = $val;
+		unset($sections['theme'][$st]);
+		$sections['theme'] = array_values($sections['theme']);
+		array_push($sections['theme'],$mv);
+		unset($mv);
+		break;
+	}
+}
+//print "<pre>"; print_r($sections['theme']); print "</pre>";
 
 $section_errors = array();
 $section_errors['general'] = false;
@@ -220,24 +245,23 @@ if ($adv) {
 
 // assign variables to the theme
 $cms->theme->assign(array(
-	'conftypes'		=> array_keys($sections),
-	'ct'			=> $ct,
-	'sections'		=> $sections,
-	'section_labels'	=> $section_labels,
-	'section'		=> $sections[$ct],
-	's'			=> $s,
-	'conf'			=> $config_layout,
-	'errors'		=> $form->errors(),
-	'section_errors'	=> $section_errors['general'],
-	'form'			=> $form->values(),
-	'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
-	'advanced_config'	=> $cms->session->opt('advconfig') ? true : false,
-	'q'			=> $q,
-	'install_dir_insecure'			=> false
+	'conftypes'				=> array_keys($sections),
+	'ct'					=> $ct,
+	'sections'				=> $sections,
+	'section_labels'		=> $section_labels,
+	'section'				=> $sections[$ct] ?? null,
+	's'						=> $s,
+	'conf'					=> $config_layout,
+	'errors'				=> $form->errors(),
+	'section_errors'		=> $section_errors['general'],
+	'form'					=> $form->values(),
+	'form_key'				=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'advanced_config'		=> $cms->session->opt('advconfig') ? true : false,
+	'q'						=> $q,
+	'install_dir_insecure'	=> false
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/2column.css');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/jquery.interface.js'); // needed for color animation

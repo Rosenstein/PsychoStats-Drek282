@@ -21,11 +21,44 @@
  *	Version $Id: awards.php 495 2008-06-18 18:41:37Z lifo $
  */
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
 include(PS_ROOTDIR . "/includes/class_calendar.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Player Awards');
+$cms->theme->page_title('Awards—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
+
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+	previouspage($php_scnm);
+}
 
 // Check to see if there is any data in the database before we continue.
 $cmd = "SELECT * FROM $ps->t_plr_data LIMIT 1";
@@ -36,8 +69,11 @@ $results = $ps->db->fetch_rows(1, $cmd);
 // if $results is empty then we have no data in the database
 if (empty($results)) {
 	$cms->full_page_err('awards', array(
+		'maintenance'	=> $maintenance,
 		'message_title'	=> $cms->trans("No Stats Found"),
-		'message'	=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'message'		=> $cms->trans("You must run stats.pl before you will see any stats."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
 	));
 	exit();
 }
@@ -104,13 +140,15 @@ if (!$valid_date) {
 $cmd = "SELECT awarddate FROM $ps->t_awards WHERE awardrange = '$v' AND awarddate <= '$d' "; 
 if ($p) $cmd .= "AND topplrid=$_p ";
 $cmd .= "ORDER BY awarddate DESC LIMIT 1";
-list($d) = $ps->db->fetch_list($cmd);
+list($d) = !empty($ps->db->fetch_list($cmd)) ? $ps->db->fetch_list($cmd) : null;
 
 // if date is still empty then we have no awards in the database (at least not for the selected view)
 if (empty($d)) {
 	$cms->full_page_err('awards', array(
 		'message_title'	=> $cms->trans("No Awards Found"),
-		'message'	=> $cms->trans("There are currently no awards in the database to display.")
+		'message'	=> $cms->trans("There are currently no awards in the database to display."),
+		'form_key'		=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+		'cookieconsent'	=> $cookieconsent,
 	));
 	exit();
 }
@@ -159,11 +197,15 @@ foreach ($list as $week) {
 $cal->selected($v);
 $cms->theme->assign('calendar', $cal->draw());
 
+// If bots are to be excluded from ranking
+$exclude = (!$ps->conf['main']['ranking']['bots_listed']) ? "AND (p.uniqueid NOT LIKE '%BOT%') " : '';
+
 // load the awards for the date specified (for all players; not just the selected one if $p is selected)
 $list = $ps->db->fetch_rows(1, 
 	"SELECT a.*,ac.phrase,ac.negative,ac.format,ac.rankedonly,ac.description,p.*,pp.* ". 
 	"FROM $ps->t_awards a, $ps->t_config_awards ac, $ps->t_plr p, $ps->t_plr_profile pp " .
 	"WHERE ac.id=a.awardid AND p.plrid=a.topplrid AND pp.uniqueid=p.uniqueid AND awardrange='$v' AND awarddate='$d' " .
+	$exclude .
 	"ORDER BY idx,awardtype,awardname"
 );
 $awards = array();
@@ -194,21 +236,25 @@ $awards['weapon'] ??= null;
 
 // assign variables to the theme
 $cms->theme->assign(array(
-	'page'		=> basename(__FILE__,'.php'),
-	'view_str' 	=> $views[$v],
-	'view'		=> $v,
-	'date'		=> $d,
-	'next'		=> $next,
-	'next_str'	=> next_str($next),
-	'prev'		=> $prev,
-	'prev_str'	=> prev_str($prev),
-	'awards_for_str'=> curr_str($d,$v),
-	'awards'	=> $awards,
-	'plrid'		=> $p
+	'maintenance'		=> $maintenance,
+	'view_str' 			=> $views[$v],
+	'view'				=> $v,
+	'date'				=> $d,
+	'next'				=> $next,
+	'next_str'			=> next_str($next),
+	'prev'				=> $prev,
+	'prev_str'			=> prev_str($prev),
+	'awards_for_str'	=> curr_str($d,$v),
+	'awards'			=> $awards,
+	'plrid'				=> $p,
+	'i_bots'			=> $ps->invisible_bots(),
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
+	'title_logo'		=> ps_title_logo(),
+	'game_name'			=> ps_game_name(),
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/2column.css');	// this page has a left column
 $cms->theme->add_css('css/calendar.css');
 $cms->theme->add_js('js/calendar.js');

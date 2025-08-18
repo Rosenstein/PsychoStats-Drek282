@@ -43,7 +43,7 @@ define("CLASS_PSYCHOSTATS_PHP", 1);
 // automatically updated by packaging script when a release is made.
 // this may differ from the version stored in the database, differences may indicate 
 // an invalid installation.
-define('PSYCHOSTATS_VERSION', '3.2.8b');
+define('PSYCHOSTATS_VERSION', '3.2.8n');
 
 /**
  * PsychoStats factory class. This is a self contained API class for PsychoStats. It can be included almost
@@ -66,7 +66,11 @@ public static function &create($dbconf = array(), $gametype = null, $modtype = n
 	}
 
 	// determine the game::mod class to try and load
-	$cmd = "SELECT value FROM " . $db->dbtblprefix . "config WHERE conftype='main' AND section IS NULL AND ";
+	if ($db->table_exists($db->dbtblprefix . "config")) {
+		$cmd = "SELECT value FROM " . $db->dbtblprefix . "config WHERE conftype='main' AND section IS NULL AND ";
+	} else {
+		die("PsychoStats has not been installed properly.  See INSTALL.md for details.");
+	}
 	if (!$gametype and !$modtype) {
 		$cmd .= "var IN ('gametype', 'modtype') ORDER BY var";
 		list($gametype,$modtype) = $db->fetch_list($cmd);

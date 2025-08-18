@@ -634,6 +634,10 @@ function get_player($args = array(), $minimal = false) {
 	if (!$args['minimal'] and $args['loadvictims'] and $this->conf['main']['plr_save_victims']) {
 		$cmd  = "SELECT plr.*,pp.*,v.* FROM $this->c_plr_victims AS v, $this->t_plr as plr, $this->t_plr_profile pp ";
 		$cmd .= "WHERE v.plrid='$id' AND v.victimid=plr.plrid AND pp.uniqueid=plr.uniqueid ";
+
+		// If bots are to be excluded from being listed
+		if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
+
 		$cmd .= $this->getsortorder($args, 'victim');
 		$plr['victims'] = $this->db->fetch_rows(1, $cmd);
 	}
@@ -680,6 +684,11 @@ function get_player($args = array(), $minimal = false) {
 	}
 */
 
+	//declarations for player profile
+	$plr['friend_id'] ??= null;
+	$plr['steam_community_url'] ??= null;
+	$plr['steam_add_friend_url'] ??= null;
+
 	return $plr;
 }
 function not0($a) { return ($a != '0.0.0.0'); }
@@ -687,7 +696,7 @@ function not0($a) { return ($a != '0.0.0.0'); }
 // returns a list of per-day stats for a player. Each element in the list is a single day.
 function get_player_days($args = array()) {
 	$args += array(
-		'plrid'		=> $id,
+		'plrid'		=> 0,
 		'sort'		=> 'statdate',
 		'order'		=> 'desc',
 		'start'		=> 0,
@@ -813,6 +822,10 @@ function get_clan($args = array(), $minimal = false) {
 	if (!$args['allowall']) $cmd .= "AND plr.allowrank=1 ";
 	$args['where'] ??= null;
 	if (trim($args['where']) != '') $cmd .= "AND (" . $args['where'] . ") ";
+
+	// If bots are to be excluded from being listed
+	if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
+
 	$cmd .= "GROUP BY plr.clanid ";
 	$cmd .= $this->getsortorder($args);
 	$clan = $this->db->fetch_row(1, $cmd);
@@ -1049,6 +1062,10 @@ function get_weapon_player_list($args = array()) {
 		'start'		=> 0,
 		'limit'		=> 10,
 	);
+
+	// sanitize sort
+	$args['sort'] = ($this->db->column_exists(array($this->c_plr_weapons, $this->t_plr, $this->t_plr_profile), $args['sort'])) ? $args['sort'] : 'kills';
+
 	$id = $this->db->escape($args['weaponid']);
 	if (!is_numeric($id)) $id = 0;
 	$fields = $args['fields'] ? $args['fields'] : "data.*, plr.*, pp.*, c.cn";
@@ -1059,6 +1076,10 @@ function get_weapon_player_list($args = array()) {
 	$cmd .= "WHERE plr.plrid=data.plrid AND data.weaponid=$id AND pp.uniqueid=plr.uniqueid ";
 	if (!$args['allowall']) $cmd .= "AND plr.allowrank=1 ";
 	if ($args['where'] != '') $cmd .= "AND (" . $args['where'] . ") ";
+
+	// If bots are to be excluded from being listed
+	if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
+	
 	$cmd .= $this->getsortorder($args);
 	$list = array();
 	$list = $this->db->fetch_rows(1, $cmd);
@@ -1087,6 +1108,10 @@ function get_role_player_list($args = array()) {
 	$cmd .= "WHERE plr.plrid=data.plrid AND data.roleid=$id AND pp.uniqueid=plr.uniqueid ";
 	if (!$args['allowall']) $cmd .= "AND plr.allowrank=1 ";
 	if ($args['where'] != '') $cmd .= "AND (" . $args['where'] . ") ";
+
+	// If bots are to be excluded from being listed
+	if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
+
 	$cmd .= $this->getsortorder($args);
 	$list = array();
 	$list = $this->db->fetch_rows(1, $cmd);
@@ -1116,6 +1141,10 @@ function get_map_player_list($args = array()) {
 	$cmd .= "WHERE plr.plrid=data.plrid AND data.mapid=$id AND pp.uniqueid=plr.uniqueid ";
 	if (!$args['allowall']) $cmd .= "AND plr.allowrank=1 ";
 	if ($args['where'] != '') $cmd .= "AND (" . $args['where'] . ") ";
+
+	// If bots are to be excluded from being listed
+	if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
+
 	$cmd .= $this->getsortorder($args);
 	$list = array();
 	$list = $this->db->fetch_rows(1, $cmd);
@@ -1137,8 +1166,9 @@ function get_player_list($args = array()) {
 		'joinclaninfo'	=> false,
 		'joinccinfo'	=> true,
 		'results'	=> null,
-		'search'	=> null
+		'search'	=> null,
 	);
+
 	$values = "";
 	if (trim($args['fields']) == '') {
 		if ($args['joinclaninfo']) $values .= "clan.*, ";
@@ -1159,11 +1189,15 @@ function get_player_list($args = array()) {
 	if (!$args['allowall']) $cmd .= "AND plr.allowrank=1 ";
 	if (trim($args['where']) != '') $cmd .= "AND (" . $args['where'] . ") ";
 
+
 	$filter = trim($args['filter']);
 	if ($filter != '') {
 		$f = '%' . $this->db->escape($filter) . '%';
 		$cmd .= "AND (pp.name LIKE '$f') ";
 	}
+
+	// If bots are to be excluded from being listed
+	if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
 	
 	$list = array();
 	// limit list to search results
@@ -1186,6 +1220,7 @@ function get_player_list($args = array()) {
 		$cmd .= $this->getsortorder($args);
 		$list = $this->db->fetch_rows(1, $cmd);
 	}
+
 	return $list;
 }
 
@@ -1279,6 +1314,10 @@ function get_clan_list($args = array()) {
 	$cmd .= "WHERE (plr.clanid=clan.clanid AND plr.allowrank=1) AND clan.clantag=cp.clantag AND data.plrid=plr.plrid ";
 	if (!$args['allowall']) $cmd .= "AND clan.allowrank=1 ";
 	if (trim($args['where']) != '') $cmd .= "AND (" . $args['where'] . ") ";
+
+	// If bots are to be excluded from being listed
+	if (!$this->conf['main']['ranking']['bots_listed']) $cmd .= "AND (plr.uniqueid NOT LIKE '%BOT%') ";
+
 	$cmd .= "GROUP BY clan.clanid ";
 //	$cmd .= "HAVING totalmembers > " . $this->conf['main']['clans']['min_members'] . " ";
 	$cmd .= $this->getsortorder($args);
@@ -1324,7 +1363,7 @@ function get_role_list($args = array()) {
 	$args += array(
 		'start'		=> 0,
 		'limit'		=> 100,
-		'sort'		=> 'skill',
+		'sort'		=> 'kills',
 		'order'		=> 'desc',
 		'fields'	=> '',
 		'where'		=> '',
@@ -1353,7 +1392,7 @@ function get_map_list($args = array()) {
 	$args += array(
 		'start'		=> 0,
 		'limit'		=> 100,
-		'sort'		=> 'skill',
+		'sort'		=> 'kills',
 		'order'		=> 'desc',
 		'fields'	=> '',
 		'where'		=> '',
@@ -1500,13 +1539,13 @@ function delete_player($plrid, $keep_profile = TRUE) {
 		while (count($ids)) {
 			// limit how many we delete at a time, so we're sure the query is never too large
 			$list = array_splice($ids, 0, 100);
-			$this->db->query("DELETE FROM " . $t . $this->tblsuffix . " WHERE dataid IN (" . join(', ', $list) . ")");
+			if ($this->db->table_exists($t . $this->tblsuffix)) $this->db->query("DELETE FROM " . $t . $this->tblsuffix . " WHERE dataid IN (" . join(', ', $list) . ")");
 		}
 		$this->db->delete($t, 'plrid', $plrid);
 	}
 
 	// remove simple data related to this player ID
-	$tables = array( 't_plr_ids', 't_plr_sessions', 't_plr_victims', 't_plr_weapons', 't_plr' );
+	$tables = array( 't_plr_ids_name', 't_plr_ids_ipaddr', 't_plr_ids_worldid', 't_plr_sessions', 't_plr_victims', 't_plr_weapons', 't_plr' );
 	foreach ($tables as $table) {
 		// don't use $_plrid, since delete() will escape it
 		$this->db->delete($this->$table, 'plrid', $plrid);
@@ -2035,24 +2074,28 @@ function ip_lookup($ip) {
 // allows the PS object to initialize some theme related variables, etc...
 function theme_setup(&$theme) {
 	global $cms;
+	global $basename;
 	$is_admin = $cms->user->is_admin();
 	$cms->input['loggedin'] = $cms->input['loggedin'] ?? null;
 	$theme->assign(array(
-		'use_roles'		=> $this->use_roles,
-		'show_ips'		=> $this->conf['theme']['permissions']['show_ips'] || $is_admin,
-		'show_worldids'		=> $this->conf['theme']['permissions']['show_worldids'] || $is_admin,
-		'show_login'		=> $this->conf['theme']['permissions']['show_login'] || $is_admin,
-		'show_register'		=> $this->conf['theme']['permissions']['show_register'] || $is_admin,
-		'show_version'		=> $this->conf['theme']['permissions']['show_version'] || $is_admin,
-		'show_admin'		=> $this->conf['theme']['permissions']['show_admin'],
-		'show_benchmark'	=> $this->conf['theme']['permissions']['show_benchmark'],
-		'show_plr_icons'	=> $this->conf['theme']['permissions']['show_plr_icons'],
-		'show_plr_flags'	=> $this->conf['theme']['permissions']['show_plr_flags'],
-		'show_clan_icons'	=> $this->conf['theme']['permissions']['show_clan_icons'],
-		'show_clan_flags'	=> $this->conf['theme']['permissions']['show_clan_flags'],
-		'loggedin'		=> ($cms->input['loggedin'] and $cms->user->logged_in()),
-		'shades'		=> $cms->session->opt('shades'),
-		'worldid_noun'		=> $this->worldid_noun(),
+		'basename'				=> $basename ?? null,
+		'maintenance'			=> $this->conf['main']['maintenance_mode']['enable'],
+		'use_roles'				=> $this->use_roles,
+		'show_ips'				=> $this->conf['theme']['permissions']['show_ips'] || $is_admin,
+		'show_worldids'			=> $this->conf['theme']['permissions']['show_worldids'] || $is_admin,
+		'show_login'			=> $this->conf['theme']['permissions']['show_login'] || $is_admin,
+		'show_register'			=> $this->conf['theme']['permissions']['show_register'] || $is_admin,
+		'show_version'			=> $this->conf['theme']['permissions']['show_version'] || $is_admin,
+		'show_admin'			=> $this->conf['theme']['permissions']['show_admin'],
+		'show_privacy_policy'	=> $this->conf['main']['security']['show_privacy_policy'],
+		'show_benchmark'		=> $this->conf['theme']['permissions']['show_benchmark'],
+		'show_plr_icons'		=> $this->conf['theme']['permissions']['show_plr_icons'],
+		'show_plr_flags'		=> $this->conf['theme']['permissions']['show_plr_flags'],
+		'show_clan_icons'		=> $this->conf['theme']['permissions']['show_clan_icons'],
+		'show_clan_flags'		=> $this->conf['theme']['permissions']['show_clan_flags'],
+		'loggedin'				=> ($cms->input['loggedin'] and $cms->user->logged_in()),
+		'shades'				=> $cms->session->opt('shades'),
+		'worldid_noun'			=> $this->worldid_noun(),
 		'worldid_noun_plural'	=> $this->worldid_noun(true),
 	));
 	$theme->assign_by_ref('conf', $this->conf);
@@ -2533,6 +2576,7 @@ function build_map_stats() {
 		'skill' => $cms->trans("Skill"),
 	));
 	$stat_table->header_attr('value', 'class', 'active');
+	$stat_table->column_attr('+', 'class', 'first');
 	$stat_table->column_attr('name', 'class', 'left');
 	$stat_table->column_attr('skill', 'class', 'right');
 	$this->map_players_table_mod($stat_table);
@@ -2703,6 +2747,23 @@ function gametype() {
 }
 function modtype() {
 	return $this->conf['main']['modtype'];
+}
+
+# returns true if the player is a bot
+function is_bot($uniqueid) {
+	return (reset(explode(':', $uniqueid)) == 'BOT') ? true : false;
+}
+
+# returns true if bot stats are included in stats but are not listed
+function invisible_bots() {
+	// Are bots not ignored in stat compilation and not allowed to rank?
+	if (!$this->conf['main']['ranking']['bots_listed'] and !$this->conf['main']['ignore_bots']) {
+		// Are there BOT uniqueids in the player table?
+		$cmd  = "SELECT uniqueid FROM $this->t_plr ";
+		$cmd .= "WHERE uniqueid LIKE '%BOT%' LIMIT 1";
+		return ($this->db->fetch_row(1, $cmd)) ? true : false;
+	}
+	return false;
 }
 
 // mod sub-classes override these to modify various tables within the stats.

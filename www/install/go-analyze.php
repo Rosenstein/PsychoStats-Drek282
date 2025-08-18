@@ -38,7 +38,8 @@ $required_err = 0;
 $required_ext = array(
 //	'fake'	=> "Fake extension to cause an error",
 	'mysqli' => "MySQL support must be enabled in order to view your stats online.",
-	'curl'	=> "CURL module is required for to check validity of social profile url's."
+	'curl'	=> "CURL module is required for to check validity of social profile url's.",
+	'xml'   => "XML module is used throughout psychostats, in particular the theming system."
 );
 
 $optional_err = 0;
@@ -50,8 +51,6 @@ $optional_ext = array(
 		   "player stats (charts and graphs).",
 	'gmp'	=> "GNU Multiple Precision support is only required for SteamID conversion routines for " . 
             "player profiles.",
-	'mcrypt'=> "mcrypt support (encryption) is only needed if you want to enable some extra security features " . 
-		   "with user sessions. The extra security granted by having this extension is minimal to PsychoStats.",
 	'zip'	=> "ZIP support will allow you to download and install new themes directly from the ACP."
 );
 

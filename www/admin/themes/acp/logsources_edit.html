@@ -18,6 +18,13 @@
 <legend>{if $id}<#Edit#>{else}<#New#>{/if} <#Log Source#></legend>
 {if $errors.fatal}<div class="err fatal"><h4><#Fatal Error#></h4><p>{$errors.fatal}</p></div>{/if}
 
+<div class="inline-notes">
+	<h4><#Note#></h4>
+	<p>	
+		You should save your log source before you test it.  If you test the log source before you save it you will have to re-enter any passwords.
+	</p>
+</div>
+
 <div{if $errors.enabled} class="err"{/if}>
 	<p class="err" id="err-enabled">{$errors.enabled|escape}</p>
 	<label><#Enabled?#></label>
@@ -80,7 +87,7 @@
 <div id="ls-username"{if $errors.username} class="err"{/if}>
 	<p class="err" id="err-username">{$errors.username|escape}</p>
 	<label><#Username#>:</label>
-	<input name="username" value="{$form.username|escape}" type="text" class="field">
+	<input name="username" value="{$log.username|escape}" type="text" class="field" autocomplete="off">
 </div>
 
 <div id="ls-blank" class="block">
@@ -130,6 +137,7 @@
 	<small>(<#only affects the last log in a directory#>)</small>
 </div>
 
+{* recursive div
 <div id="ls-recursive" class="block">
 <div {if $errors.recursive} class="err"{/if}>
 	<p class="err" id="err-recursive">{$errors.recursive|escape}</p>
@@ -143,7 +151,8 @@
 	<label><#Recursive Depth#>:</label>
 	<input name="depth" value="{$form.depth|escape}" type="text" class="field short">
 </div>
-</div> {* recursive div *}
+</div>
+*}
 
 <div id="ls-stream-opt" class="inline-notes">
 	<h4><#Stream Access-List#></h4>

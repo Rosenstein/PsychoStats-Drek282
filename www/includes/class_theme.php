@@ -65,6 +65,7 @@ var $css_links		= array();
 var $css_compress	= true;
 var $js_sources		= array();
 var $js_compress	= true;
+var $rel_links		= array();
 var $loaded_themes	= array();
 var $parent_themes	= array();
 var $fetch_compile	= true;
@@ -140,7 +141,7 @@ function __construct(&$cms, $args = array()) {
 	));
 
 	// allow theme access to a couple methods of our objects
-	$this->register_object('theme', $this, array( 'css_links', 'js_sources', 'url', 'parent_url' ), false);
+	$this->register_object('theme', $this, array( 'css_links', 'js_sources', 'rel_links', 'url', 'parent_url' ), false);
 	$this->register_object('db', $this->cms->db, array( 'totalqueries' ), false);
 	
 }  // end of constructor
@@ -172,6 +173,26 @@ function add_css($href, $media='screen,print') {
 
 function add_js($src, $switch = null) {
 	$this->js_sources[$src] = array( 'src' => $src, 'switch' => $switch );
+}
+
+function add_rel($values) {
+        if (is_array($values)) {
+                $this->rel_links[] = $values;
+        }
+}
+
+// SMARTY: template routine to print out the REL links in the overall_header
+function rel_links() {
+        if (!is_array($this->rel_links)) return '';
+        $out = '';
+        foreach ($this->rel_links as $link) {
+                $out .= "\t<link ";
+                foreach ($link as $key => $val) {
+                        $out .= "$key='" . ps_escape_html($val) . "' ";
+                }
+                $out .= ">\n";
+        }
+        return $out;
 }
 
 // returns true for '1' or 'true' and false for anything else
@@ -415,7 +436,8 @@ function theme($new = null, $in_db = true) {
 	global $ps;
 	if (empty($new)) {
 		return $this->theme;
-	} elseif ($this->is_theme($new)) {
+	}
+	if ($this->is_theme($new)) {
 		$loaded = false;
 		// load the theme from the database if possible
 		$ps_installed = $this->cms->db->table_exists($this->cms->db->table('config_themes'));
@@ -510,11 +532,15 @@ function theme($new = null, $in_db = true) {
 			}
 		}
 
-		$old = $this->theme;
 		$this->theme = $new;
-		return $old;
+		return $new;
 	} else {
-		return $this->theme;
+		trigger_error("Error loading theme $new. <strong>Using default instead.</strong> See the errors and/or warnings below for more information", E_USER_WARNING);
+		print $err;
+
+		$new = 'default';
+		$this->theme = $new;
+		return $new;
 	}
 }
 
@@ -592,6 +618,7 @@ function get_language_list($theme = null) {
 	$theme_list = (array)($theme ? $theme : array_keys($this->loaded_themes));
 	$langs = array();
 	foreach ($theme_list as $t) {
+		if (empty($t)) continue;
 		$path = $this->language_dir($t);
 		$dh = @opendir($path);
 		if ($dh) {
@@ -745,7 +772,7 @@ function fetch_eval($tpl) {
 		return '';
 	}
 
-	$source = $res['source_content'];
+	$source = $res['source_content'] ?? '';
 	$compiled = '';
 
 	$this->_compile_source('eval-template', $source, $compiled);
@@ -769,7 +796,7 @@ function parse($filename, $append_buffer = true) {
 	$orig = $this->theme();
 //	print "parse($filename) orig=$orig\n";
 	$out = $this->fetch_compile ? $this->fetch($filename) : $this->fetch_eval($filename);
-	$this->theme($orig);
+	//$this->theme($orig);
 	if ($append_buffer) $this->buffer .= $out;
 	return $out;
 }
@@ -917,9 +944,9 @@ function load_styles($file = 'styles.xml', $theme = null) {
 	}
 
 	$orig = $this->language_tags('{#', '#}');
-	$orig_theme = $this->theme($theme);
+	//$orig_theme = $this->theme($theme);
 	$s->load($this->fetch_compile ? $this->fetch($res) : $this->fetch_eval($res), 'styles');
-	$this->theme($orig_theme);
+	//$this->theme($orig_theme);
 	$this->language_tags($orig);
 
 	$this->styles = $s;
@@ -1055,7 +1082,7 @@ function _key($key, $root = null) {
 	$found = true;
 	while (count($nodes) > 1) {
 		$node = array_shift($nodes);
-		if (array_key_exists($node, $root)) {
+		if (is_array($root) and array_key_exists($node, $root)) {
 			$root =& $root[$node];
 		} else {
 			$found = false;

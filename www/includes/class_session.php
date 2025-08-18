@@ -38,8 +38,9 @@
 if (defined("CLASS_PSYCHO_SESSION_PHP")) return 1;
 define('CLASS_PSYCHO_SESSION_PHP', 1);
 
-#[AllowDynamicProperties]
-class PsychoSession { 
+#[\AllowDynamicProperties]
+class PsychoSession {
+const CIPHER = "AES-128-CBC";
 var $config = array();
 var $_is_bot = NULL;
 var $_is_new = 0;
@@ -72,7 +73,6 @@ function __construct($_config = array()) {
 		'cookielifeoptions'	=> 60 * 60 * 24 * 30,		// ~30 days
 		'cookiedomain'		=> '',
 		'cookiepath'		=> '/',
-		'cookiename'		=> 'sess',
 		'cookiesecure'		=> host_secure() ? 1 : 0,	// only set if host is using HTTPS
 		'cookiesalt'		=> '',				// mcrypt module must be installed if this is !empty	
 		'cookiecompress'	=> TRUE,
@@ -132,7 +132,7 @@ function PsychoSession($_config = array()) {
 
 // gets/sets the admin flag of the session
 function is_admin($toggle = null) {
-	$old = $this->sessdata['session_is_admin'];
+	$old = $this->sessdata['session_is_admin'] ?? null;
 	if ($toggle !== null) $this->sessdata['session_is_admin'] = $toggle;
 	return $old;
 }
@@ -190,7 +190,7 @@ function generate_sid($random="") {
 	} else {
 //		return md5(time() . mt_rand()  . $random);
 		// the UNIQUE_ID may or may not actually be present. If it is, all the better.
-		return md5($_SERVER["UNIQUE_ID"] . uniqid(mt_rand(), true) . $random);
+		return md5($_SERVER['UNIQUE_ID'] ?? null . uniqid(mt_rand(), true) . $random);
 	}
 }
 
@@ -313,12 +313,14 @@ function _init_new_session() {
 
 // private method to get or set the users current SID cookie
 function _session_start() {
+	global $ps;
+	global $cookieconsent;
 	$sid = $this->_find_user_sid();
 	if (!$sid or !$this->is_sid($sid)) {
 #		print "NEW SESSION STARTING ... <BR>";
 		$this->_init_new_session();
 #		$this->_save_session();				// always SAVE when we create a new session
-		$this->send_cookie($this->sid());
+		if ($cookieconsent or !$ps->conf['main']['security']['enable_cookieconsent']) $this->send_cookie($this->sid());
 	} else {
 #		print "PREVIOUS SESSION STARTING ... <BR>";
 		$this->_read_session($sid);
@@ -328,7 +330,7 @@ function _session_start() {
 			$this->_init_new_session();			// generate a new dataset
 #			$this->_save_session();
 			$this->delete_cookie();				// delete old sess_id cookie
-			$this->send_cookie($this->sid());		// send a new cookie
+			if ($cookieconsent or !$ps->conf['main']['security']['enable_cookieconsent']) $this->send_cookie($this->sid());		// send a new cookie
 		}
 	}
 }
@@ -346,7 +348,7 @@ function start() {
 //	print "START SESSION<br/>\n";
 	if ($this->online_status()==0 and !empty($this->cms->cookie[ $this->sid_name('_login') ])) {
 		$auto = $this->load_login();
-		if ($auto['userid'] and $auto['password']) {
+		if (isset($auto['userid']) and isset($auto['password'])) {
 			$func = $this->config['login_callback_func'];
 			$userid = is_callable($func) ? call_user_func($func, $auto['userid'], $auto['password']) : false;
 			if ($userid) {
@@ -385,11 +387,10 @@ function start() {
 // Initializes the encryption engine for encrypting user cookies
 function _initkey() {
 	$this->session_encrypted = false;
-	if ($this->config['cookiesalt'] and function_exists('mcrypt_module_open')) {
+	if ($this->config['cookiesalt'] and function_exists('openssl_encrypt')) {
 		$salt = $this->config['cookiesalt'] == -1 ? $this->sid() : $this->config['cookiesalt'];
-		$this->td = mcrypt_module_open('tripledes', '', 'ecb', '');
-		$this->iv = mcrypt_create_iv(mcrypt_enc_get_iv_size($this->td), MCRYPT_RAND);
-		$this->key = substr($salt, 0, mcrypt_enc_get_key_size($this->td));
+		$this->iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this::CIPHER));
+		$this->key = $salt;
 		$this->session_encrypted = true;
 	}
 	return $this->session_encrypted;
@@ -398,19 +399,18 @@ function _initkey() {
 function encrypt($str) {
     $this->session_encrypted = $this->session_encrypted ?? false;
 	if (!$this->session_encrypted) return $str;
-	mcrypt_generic_init($this->td, $this->key, $this->iv);
-	$encrypted = mcrypt_generic($this->td, $str);						// Encrypt data 
-	mcrypt_generic_deinit($this->td);
-	return $encrypted;
+	$ciphertext_raw = openssl_encrypt($str, $this::CIPHER, $this->key, $options=OPENSSL_RAW_DATA, $this->iv);
+	return base64_encode( $this->iv.$ciphertext_raw );
 }
  
 function decrypt($str) {
     $this->session_encrypted = $this->session_encrypted ?? false;
 	if (!$this->session_encrypted) return $str;
-	mcrypt_generic_init($this->td, $this->key, $this->iv);
-	$decrypted = trim(mdecrypt_generic($this->td, $str));
-	mcrypt_generic_deinit($this->td);
-	return $decrypted;
+	$c = base64_decode($str);
+	$ivlen = openssl_cipher_iv_length($this::CIPHER);
+	$iv = substr($c, 0, $ivlen);
+	$ciphertext_raw = substr($c, $ivlen);
+	return openssl_decrypt($ciphertext_raw, $this::CIPHER, $this->key, $options=OPENSSL_RAW_DATA, $iv);
 }
 
 // sets or gets the current online status for the session. If the online status is changed, the previous value is returned.
@@ -518,12 +518,16 @@ function logged_in() {
 
 // returns the cookie name (w/o any suffix; '_id', etc)
 function sid_prefix() {
-	return $this->config['cookiename'];
+	// If PS is installed in a subfolder the cookie name needs to reflect that.
+	$cnsfid = reset(explode('/', ltrim(SAFE_PHP_SCNM, '/')));
+	$cnsfid = (($cnsfid != 'admin' or $cnsfid != 'install') and !str_contains($cnsfid, '.php')) ? $cnsfid : null;
+	$sidprefix = ($cnsfid) ? $cnsfid . '_sess' : 'sess';
+	return $sidprefix;
 }
 
 // returns the name of the SID cookie
 function sid_name($suffix='_id') {
-	return $this->config['cookiename'] . $suffix;
+	return 'ps_' . $this->sid_prefix() . $suffix;
 }
 
 // returns the current session ID
@@ -569,6 +573,8 @@ function load_session_options() {
 // saves the session options.
 // deflate reduces the cookie size by about 1/2 (plus it obfuscates it)
 function save_session_options($opts = null) {
+	global $ps;
+	global $cookieconsent;
 	if ($opts === null) {
 		if ($this->options === null) {
 			$this->load_session_options();
@@ -581,7 +587,7 @@ function save_session_options($opts = null) {
 	if ($this->config['cookiecompress'] and function_exists('gzdeflate')) $str = gzdeflate($str);
 	$str = $this->encrypt($str);
 	$encoded = $this->config['cookieencode'] ? base64_encode($str) : $str;
-	$this->send_cookie($encoded, $this->config['cookielifeoptions'] ? time() + $this->config['cookielifeoptions'] : 0, '_opts');
+	if ($cookieconsent or !isset($ps->conf['main']['security']['enable_cookieconsent'])) $this->send_cookie($encoded, $this->config['cookielifeoptions'] ? time() + $this->config['cookielifeoptions'] : 0, '_opts');
 //	$this->send_cookie(strlen($encoded), 0, '_opts_size');	// debug
 
 	// add the modified cookie to memory incase we re-read the options before we exit
@@ -642,8 +648,7 @@ function del_opt($key) {
 // sets/gets the session key (this is not the session_id).
 // this is for CSRF security.
 function key($value = null) {
-    $this->sessdata['session_key'] = $this->sessdata['session_key'] ?? null;
-	$old = $this->sessdata['session_key'];
+	$old = $this->sessdata['session_key'] ?? '';
 	if ($value !== null) {
 		$this->sessdata['session_key'] = empty($value) ? null : $value;
 		$this->sessdata['session_key_time'] = time();
@@ -658,7 +663,7 @@ function key_time() {
 
 // returns true if the key given matches the current session and is valid.
 // max_age is the maximum seconds a key is allowed to be alive before being invalid.
-function verify_key($form_key, $max_age = 900) {
+function verify_key($form_key, $max_age = 1200) {
 	$time = $this->key_time();
 	if (empty($time)) $time = time();
 	$valid = (
@@ -680,6 +685,8 @@ function sid_method() {
 // The user's cookie must have the proper login_key or the auto-login will fail. This prevents another user from attempting
 // to forge an auto-login since the login_key is private to the original user.
 function save_login($userid, $password) {
+	global $ps;
+	global $cookieconsent;
 	$token = substr(md5(md5($_SERVER["UNIQUE_ID"] . uniqid(mt_rand(), true)) . $userid . $password), mt_rand(0,24), 8);
 	$ary = array('userid' => $userid, 'password' => $password, 'token' => $token);
 	$data = $this->encrypt(base64_encode(serialize($ary)));
@@ -689,7 +696,7 @@ function save_login($userid, $password) {
 			$this->config['db_user_id'], $this->sessdata['session_userid']
 		);
 	}
-	return $this->send_cookie($data, time()+60*60*24*30, '_login'); 		// autologin cookie is saved for 30 days
+	if ($cookieconsent or !$ps->conf['main']['security']['enable_cookieconsent']) return $this->send_cookie($data, time()+60*60*24*30, '_login'); 		// autologin cookie is saved for 30 days
 }
 
 // returns the auto login cookie or an empty array if not found or not valid.

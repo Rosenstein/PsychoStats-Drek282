@@ -1,7 +1,7 @@
 --- DREK ---
 
 
-Version 3.2.8b (in progress)
+Version 3.2.8n (in progress)
 * [Updated] Minimum MySQL version updated to 5.5.0
 * [Updated] Minimum PHP version updated to 7.1.0
 * [Updated] Map overlay sql.
@@ -60,6 +60,98 @@ Version 3.2.8b (in progress)
 * [Fixed] Google maps functionality and Overview page.
 * [Fixed] Custom icons will now display in Google maps.
 * [Restored] Some, but not all, of the Google maps configuration options.
+* [Changed] Pages will now display error message if javascript is disabled.
+* [Added] GDPR compliance. ( Import '.\install\migrations\20230630_GDPR-commits.sql' into PMA if your install date is before Jun 30, 2023. )
+* [Fixed] Broken quick login.
+* [Added] Support for Gun Game: Source.
+* [Changed] Version string to indicate "nightly" status of current working version.
+* [Fixed] Overview map now excludes bots.
+* [Fixed] Where there is a location conflict, overview map now displays highest ranking player.
+* [Added] Reset button next to the search field on the Players page.
+* [Removed] Redundant theme function calls.
+* [Fixed] Error when attempting to load Awards page while stats were being generated.
+* [Fixed] Error when attempting to load map page for map not in database.
+* [Fixed] Search string length limited to 50 characters.
+* [Improved] Table header sticky at top of player, weapon and map tables when table is scrolled.
+* [Changed] Minimum player session length from 1 to 6 seconds.
+* [Changed] Skill decay can now lower skill below baseline.
+* [Fixed] Broken user creation in the Admin CP.
+* [Fixed] Broken user edit in the Admin CP.
+* [Fixed] Behaviour when function theme call is empty.
+* [Added] column_exists DB function.
+* [Fixed] Sanitized sort parameters.
+* [Improved] Encryption updted from mcrypt to openssl, thanks to jangazata.
+* [Fixed] CSRF protection.
+* [Fixed] Persistent login failures.
+* [Improved] For multiple instances of PS hosted on an individual domain, cookies are no longer shared.
+* [Removed] References to mcrypt module.
+* [Fixed] Quick login popup display.
+* [Temporarily Removed] Non-functioning reset password link.
+* [Fixed] Broken redirect on logout.
+* [Improved] When a session is expired a new session is generated.
+* [Changed] New session no longer generated on login.
+* [Updated] Day of Defeat moved from untested to supported list.
+* [Added] Credits page. ( Import '.\install\migrations\327b_base_20240122_00_credits.sql' into PMA if your install date is before Jun 30, 2023. )
+* [Added] Switch to exclude bots from listing. ( Import '.\install\migrations\327b_base_20240122_01_bot-ranking-switch.sql' into PMA if your install date is before Jan 22, 2023. )
+* [Removed] Oracle's MySQL 8.0+ not supported.
+* [Added] Two new child themes: Fiori and PT20X.
+* [Improved] The CC theme is now a child theme.
+* [Improved] Streamlined the CSS of child themes.
+* [Fixed] Player page SQL error when mod does not have roles.
+* [Added] Hitbox to weapon pages.
+* [Fixed] Compile to disk option no longer errors out.
+* [Fixed] Security issues.
+* [Added] Optional primary page title logo. ( Import '.\install\migrations\327b_base_20240201_00_title-logo.sql' into PMA if your install date is before Feb 01, 2024. )
+* [Improved] Choose alternate name if player name to be saved to player profile table is the default player name (usually "Player"), if possible. ( Import '.\install\migrations\327b_base_20240204_00_default-player-name.sql' into PMA if your install date is before Feb 04, 2024. )
+* [Fixed] Reset cookie consent button fully hidden if cookies accepted.
+* [Fixed] Annoyances with the log sources edit page.
+* [Removed] The substring "base_" from migrations sql file names.
+* [Added] Maintenance mode. ( Import '.\install\migrations\327b_20240210_00_maintenance-mode.sql' into PMA if your install date is before Feb 10, 2024. )
+* [Fixed] Broken ACP search functionality.
+* [Improved] Display of page names on browser tabs.
+* [Added] Note to "Reset Cookie Consent" button indicating that cookies will be deleted.
+* [Fixed] XSS vulnerability, thanks to JS2007.
+* [Fixed] Handle logs from multiple years.
+* [Fixed] Handle deleted logs and empty dynamic tables.
+* [Improved] Maintenance mode now displays the stats to admins with a status note.
+* [Fixed] Incorrect script names in errors.
+* [Fixed] Corrected path regex added in 260e8c25dd7f45e45aab51e821d1bd1b658459ba
+* [Improved] $basename is now a global Smarty variable.
+* [Added] A notice, configurable in the ACP, which can be displayed at the top of every page.
+* [Improved] opt.php now defined as PSFILE_IMGCOMMON_PHP.
+* [Fixed] Dynamic graphs broken due to code migration to common.php.
+* [Fixed] Undeclared array key error.
+* [Added] Note regarding availability of demo stats.
+* [Tested] No apparent issues while running on nginx.
+* [Fixed] Default sort limit reduced on error logs.
+* [Fixed] Cookie names not set correctly.
+* [Fixed] User friendly error if PsychoStats is not properly installed.
+* [Fixed] Broken player deletion.
+* [Fixed] New user creation from the player edit menu in the ACP.
+* [Restored] Error checking on username in player edit menu in the ACP.
+* [Fixed] Deprecated dynamic properties.
+* [Fixed] Force permissions on install folder.
+* [Added] Note regarding manual deletion of install folder to INSTALL.md.
+* [Fixed] install folder not deleting after install.
+* [Fixed] Meta tag for Google.
+* [Added] Add xml as a required PHP extension during the install checks by @amdoolittle
+* [Added] Full hitbox Flash source code, reminded & provided by @Solomenka
+* [Fixed] Some small html errors.
+* [Fixed] alt tag language file compatible.
+* [Fixed] Removed css style tags inside of noscript tag.
+* [Fixed] Missing 'script_error.png' in some themes.
+* [Improved] Cleaned up SQL for the ps_config_clantags table.
+* [Improved] Cleaned up child theme CSS.
+* [Added] Optional .htaccess to addons—thanks to Solomenka.
+* [Fixed] Header and cookie errors for live view page.
+* [Fixed] Misleading error message for the live view page.
+* [Fixed] "no stats" error checked incorrect table.
+* [Fixed] Script syntax for live view template.
+* [Restored] Sourcemod plugins folder from 3.2.
+* [Added] Link to PsychoStats Mods to README.md.
+* [Added] Half Life Death Match to list of supported mods.
+* [Improved] Support table—credit @Rosenstein.
+* [Fixed] Looping theme function—credit @Rosenstein.
 
 Version 3.2.7b (06/03/2021)
 * [Added] TFC heatmaps.

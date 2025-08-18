@@ -22,6 +22,7 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
 $cms->theme->assign('page', 'users');
@@ -54,7 +55,7 @@ if ($id) {
 
 	if (!$plr) {
 		$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
-		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		$cms->full_page_err($basename, $data);
 		exit();		
 	}
 	if ($plr['userid']) {
@@ -63,11 +64,13 @@ if ($id) {
 			// remove userid from plr profile
 			$ps->db->update($ps->t_plr_profile, array( 'userid' => null ), 'plrid', $plr['plrid']);
 			$plr_user->userid(0);
+		} else {
+			$plr['username'] = $plr_user->username();
 		}
 	}
 } else {
 	$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
-	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	$cms->full_page_err($basename, $data);
 	exit();		
 }
 
@@ -75,7 +78,7 @@ if ($id) {
 if ($del and $id and $plr['plrid'] == $id) {
 	if (!$ps->delete_player($id)) {
 		$data = array( 'message' => $cms->trans("Error deleting player: " . $ps->db->errstr) );
-		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		$cms->full_page_err($basename, $data);
 		exit();
 	}
 	previouspage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'players.php' )));
@@ -124,7 +127,6 @@ if (isset($submit)) {
 			);
         $form->set('website', $website);
 	}
-
 	// return error if discord id is not an 18 digit number
 	if (!empty($input['discord']) and !preg_match('|^[\d+]{17}$|', $input['discord'])) {
         $form->error('discord', $cms->trans("The Discord ID is not in the correct format.") . " " .
@@ -174,13 +176,15 @@ if (isset($submit)) {
 	if (!array_key_exists($input['accesslevel'], $cms->user->accesslevels())) {
 		$form->error('accesslevel', $cms->trans("Invalid access level specified"));
 	}
-
 	if (!$form->error('username') and $input['username'] != '') {
 		// load the user matching the username
 		$_u = $plr_user->load_user($input['username'], 'username');
+
 		// do not allow a duplicate username if another user has it already
 		if ($_u and $_u['userid']) {
 			$form->error('username', $cms->trans("Username already exists; please try another name"));
+		} else {
+			unset($form->errors['username']);
 		}
 		unset($_u);
 	}
@@ -299,7 +303,6 @@ $cms->theme->assign(array(
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 //$cms->theme->add_js('js/jquery.interface.js');
 $cms->theme->add_js('js/forms.js');

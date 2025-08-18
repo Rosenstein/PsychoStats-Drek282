@@ -22,10 +22,15 @@
  */
 
 define("PSYCHOSTATS_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include(__DIR__ . "/includes/common.php");
-$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
-$ps->theme_setup($cms->theme);
-$cms->theme->page_title('PsychoStats - Clan Stats');
+$cms->theme->page_title('Clan Stats—PsychoStats');
+
+// Is PsychoStats in maintenance mode?
+$maintenance = $ps->conf['main']['maintenance_mode']['enable'];
+
+// Page cannot be viewed if the site is in maintenance mode.
+if ($maintenance and !$cms->user->is_admin()) previouspage('index.php');
 
 $validfields = array(
 	'id', 'v', 'xml',
@@ -37,15 +42,47 @@ $validfields = array(
 );
 $cms->theme->assign_request_vars($validfields, true);
 
+// change this if you want the default sort of the clan listing to be something else
+$DEFAULT_SORT = 'kills';
+
+// create the form variable
+$form = $cms->new_form();
+
+// Get cookie consent status from the cookie if it exists.
+$cms->session->options['cookieconsent'] ??= false;
+($ps->conf['main']['security']['enable_cookieconsent']) ? $cookieconsent = $cms->session->options['cookieconsent'] : $cookieconsent = 1;
+if (isset($cms->input['cookieconsent'])) {
+	$cookieconsent = $cms->input['cookieconsent'];
+
+	// Update cookie consent status in the cookie if they are accepted.
+	// Delete coolies if they are rejected.
+	if ($cookieconsent) {
+		$cms->session->opt('cookieconsent', $cms->input['cookieconsent']);
+		$cms->session->save_session_options();
+
+		// save a new form key in the users session cookie
+		// this will also be put into a 'hidden' field in the form
+		if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+		
+	} else {
+		$cms->session->delete_cookie();
+		$cms->session->delete_cookie('_id');
+		$cms->session->delete_cookie('_opts');
+		$cms->session->delete_cookie('_login');
+	}
+	previouspage($php_scnm);
+}
+
 $load_google = (bool)($ps->conf['theme']['map']['google_key'] != '');
 
 if (!$psort) $psort = 'skill';
 
-// SET DEFAULTS. Since they're basically the same for each list, we do this in a loop
+// SET DEFAULTS—sanitized. Since they're basically the same for each list, we do this in a loop
 foreach ($validfields as $var) {
 	switch (substr($var, 1)) {
 		case 'sort':
-			if (!$$var) $$var = 'kills';
+			$$var = ($$var and strlen($$var) <= 64) ? preg_replace('/[^A-Za-z0-9_\-\.]/', '', $$var) : $DEFAULT_SORT;
+			if ($$var != 'totalmembers') $$var = ($ps->db->column_exists(array($ps->c_plr_data, $ps->t_plr, $ps->t_clan, $ps->t_clan_profile), $$var)) ? $$var : $DEFAULT_SORT;
 			break;
 		case 'order':
 			if (!$$var or !in_array($$var, array('asc', 'desc'))) $$var = 'desc';
@@ -171,7 +208,9 @@ $ptable->columns(array(
 	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
 	'skill'			=> $cms->trans("Skill"),
 ));
+$ptable->column_attr('rank', 'class', 'first');
 $ptable->column_attr('name', 'class', 'left');
+$ptable->column_attr('skill', 'class', 'right');
 $ps->clan_players_table_mod($ptable);
 $cms->filter('clan_members_table_object', $ptable);
 
@@ -192,6 +231,7 @@ $wtable->columns(array(
 	'damage' 		=> array( 'label' => $cms->trans("Dmg"), 'callback' => 'dmg', 'tooltip' => $cms->trans("Damage") ),
 ));
 $wtable->column_attr('uniqueid', 'class', 'first');
+$wtable->column_attr('kills', 'class', 'secondary');
 $ps->clan_weapons_table_mod($wtable);
 $cms->filter('clan_weapons_table_object', $wtable);
 
@@ -234,22 +274,27 @@ $shades = array(
 
 $totalranked ??= null;
 $cms->theme->assign(array(
-	'clan'			=> $clan,
+	'maintenance'		=> $maintenance,
+	'clan'				=> $clan,
 	'members_table'		=> $ptable->render(),
 	'weapons_table'		=> $wtable->render(),
 	'maps_table'		=> $mtable->render(),
 	'totalranked'		=> $totalranked,
 	'weaponpager'		=> $weaponpager,
 	'memberpager'		=> $memberpager,
-	'mappager'		=> $mappager,
+	'mappager'			=> $mappager,
 //	'victimpager'		=> $victimpager,
 	'shades'			=> $shades,
+	'i_bots'			=> $ps->invisible_bots(),
+	'form_key'			=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'cookieconsent'		=> $cookieconsent,
+	'title_logo'		=> ps_title_logo(),
+	'game_name'			=> ps_game_name(),
 ));
 
 // allow mods to have their own section on the left side bar
 $ps->clan_left_column_mod($clan, $cms->theme);
 
-$basename = basename(__FILE__, '.php');
 if ($clan['clanid']) {
 	$cms->theme->add_css('css/2column.css');	// this page has a left column
 	$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');

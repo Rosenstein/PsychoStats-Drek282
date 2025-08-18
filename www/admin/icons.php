@@ -22,6 +22,7 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_ADMIN_PAGE", true);
+$basename = basename(__FILE__, '.php');
 include("../includes/common.php");
 include("./common.php");
 
@@ -78,11 +79,16 @@ if ($upload) {
 	$err = '';
 	if (is_array($from)) {	// upload file
 		$file = $from;
+		// Sanitize $file['tmp_name'].
+		$file['tmp_name'] = preg_replace('/(?:\.\.|%2e%2e)(?:\/|\\)/','',$file['tmp_name']);
 		if (!is_uploaded_file($file['tmp_name'])) {
 			$err = $cms->trans("Uploaded icon is invalid");
 		}
 	} elseif ($from) {	// fetch file from URL
 		$file = array();
+		// Sanitize $from
+		$from = filter_var($from, FILTER_SANITIZE_URL);
+		$from = preg_replace('/(?:\.\.|%2e%2e)(?:\/|\\)/','',$from);
 		if (!preg_match('|^\w+://|', $from)) {	// make sure a http:// prefex is present
 			$from = "http://" . $from;
 		}
@@ -223,7 +229,7 @@ $cms->crumb('Icon Avatars', ps_url_wrapper(array('_base' => 'icons.php' )));
 $message ??= null;
 // assign variables to the theme
 $cms->theme->assign(array(
-	'page'		=> basename(__FILE__, '.php'), 
+	'page'		=> $basename, 
 	'icons'		=> $icons,
 	'message'	=> $message,
 	'icons_url'	=> $ps->conf['theme']['icons_url'],
@@ -232,7 +238,6 @@ $cms->theme->assign(array(
 ));
 
 // display the output
-$basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/2column.css');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_css('css/icons.css');
