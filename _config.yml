@@ -1,4 +1,8 @@
 theme: jekyll-theme-slate
+gems:
+  - jemoji
+gems:
+  - jemoji
 plugins:
   - jemoji
 
