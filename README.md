@@ -33,7 +33,7 @@ This version of PsychoStats currently supports the following games:
 | [Day of Defeat: Source](https://github.com/Drek282/ps_dods "Day of Defeat: Source") | source | :heavy_check_mark: | :x: |
 | [Gun Game: Source](https://github.com/Drek282/ps_gungames "Gun Game: Source") | source | :heavy_check_mark: | :x: |
 | [Half-Life 2 Death Match](https://github.com/Drek282/ps_hl2dm "Half-Life 2 Death Match") | source | :heavy_check_mark: | :x: |
-| [Team Fortress 2](https://github.com/Drek282/ps_tf2 "Team Fortress 2") | source | :heavy_check_mark: | :x: |
+| [Team Fortress 2](https://github.com/Drek282/ps_tf2 "Team Fortress 2") | source | :heavy_check_mark: | :heavy_check_mark: |
 | [The Battle Grounds III](https://github.com/Drek282/ps_bg3 "The Battle Grounds III") | source | :heavy_check_mark: | :heavy_check_mark: |
 | [Call of Duty 4](https://github.com/Drek282/ps_cod4 "Call of Duty 4") | cod4 | :heavy_check_mark: | :x: |
 | [Call of Duty 4X](https://github.com/Drek282/ps_cod4x "Call of Duty 4X") | cod4x | :heavy_check_mark: | :x: |
