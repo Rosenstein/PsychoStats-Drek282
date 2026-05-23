@@ -17,7 +17,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
-#	$Id: CmdLine.pm 522 2008-07-16 18:34:21Z lifo $
+#	$Id: CmdLine.pm 524 2026-05-13 20:30:01Z lifo $
 #
 #       PS::CmdLine initializes and collects all command line options passed to
 #       the main script (stats.pl). This is always the very first object created
@@ -36,7 +36,7 @@ use Getopt::Long;
 use Pod::Usage;
 use util qw( :win );
 
-our $VERSION = '1.10.' . (('$Rev: 522 $' =~ /(\d+)/) || '000')[0];
+our $VERSION = '1.10.' . (('$Rev: 524 $' =~ /(\d+)/)[0] || '000');
 our $AUTOLOAD;
 our @OPTS = ();
 
@@ -367,6 +367,13 @@ will fail if an unknown modtype is specified. See also: B<-gametype>
 
 Skips all daily processing procedures after logs are processed.
 
+=item B<-nologs>
+
+Skips log processing. No new game data (kills, deaths, or events) will be added to the 
+database when this flag is active.
+
+B<Note:> Designed to be used with B<"-daily"> processing procedures. See also: B<-daily>
+
 =item B<-passive, -pasv>
 
 Enables PASSIVE mode for FTP logsources. This provides a quick way to toggle
@@ -385,7 +392,7 @@ B<*** IMPORTANT ***> This can NOT be undone! Use at your own risk.
 
 Rescans all players currently not associated with a clan for matching clantags.
 Run this if you just configured a new clantag. Otherwise players that match will
-not actually assoicate with the new clantag until they reconnect to the server.
+not actually associate with the new clantag until they reconnect to the server.
 
 If "all" is specified then ALL PLAYERS will be scanned regardless if they are 
 already in a clan. This is usefull if player names have changed and they need 
@@ -397,8 +404,8 @@ This forces a "-daily clans" update.
 
 =item B<-unknown>
 
-Temporarily enables the errlog.report_unknown option from the config. This does
-not update the database and only lasts for the current process.
+Temporarily enables the 'errlog.report_unknown' option from the config. This does
+not change the setting in the database and only lasts for the current process.
 
 =item B<-verbose>
 
