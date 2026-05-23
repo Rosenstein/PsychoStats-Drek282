@@ -157,6 +157,7 @@ Version 3.2.8n (in progress)
 * [Testing] Fix for cookie errors when installed in root folder.
 * [Fixed] MySQL 8 now fully supported thanks to Luan Freitas.
 * [Added] TF2 support tested—credit @Rosenstein and @Wolvan.
+* [Added] Force version checks in all perl scripts. No point in allowing those to run if stats.pl itself can't. - Rosenstein
 
 Version 3.2.7b (06/03/2021)
 * [Added] TFC heatmaps.

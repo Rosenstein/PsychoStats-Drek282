@@ -18,7 +18,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
-#	$Id: pslang.pl 467 2008-05-28 14:31:48Z lifo $
+#	$Id: pslang.pl 468 2026-05-23 00:00:00Z lifo $
 #
 
 BEGIN { # FindBin isn't going to work on systems that run the stats.pl as SETUID
@@ -30,7 +30,72 @@ BEGIN { # FindBin isn't going to work on systems that run the stats.pl as SETUID
 	use lib $FindBin::Bin . "/lib";
 }
 
-our $VERSION = '1.00.' . (('$Rev: 467 $' =~ /(\d+)/)[0] || '000');
+BEGIN { # make sure we're running the minimum version of perl required
+	my $minver = 5.08;
+	my $curver = 0.0;
+	my ($major,$minor,$release) = split(/\./,sprintf("%vd", $^V));
+	$curver = sprintf("%d.%02d",$major,$minor);
+	if ($curver < $minver) {
+		print "Perl v$major.$minor.$release is too old to run PsychoStats.\n";
+		print "Minimum version $minver is required. You must upgrade before continuing.\n";
+		if (lc substr($^O,0,-2) eq "mswin") {
+			print "\nPress ^C or <enter> to exit.\n";
+			<>;
+		}
+		exit 1;
+	}
+}
+
+BEGIN { # do checks for required modules
+	our %PM_LOADED = ();
+	my @modules = qw( DBI DBD::mysql );
+	my @failed_at_life = ();
+	my %bad_kitty = ();
+	foreach my $module (@modules) {
+		my $V = '';
+		eval "use $module; \$V = \$${module}::VERSION;";
+		if ($@) {	# module not found
+			push(@failed_at_life, $module);
+		} else {	# module loaded ok; store for later, if -V is used for debugging purposes
+			$PM_LOADED{$module} = $V;
+		}
+	}
+
+	# check the version of modules
+	# DBD::mysql needs to be 3.x at a minimum
+	if ($PM_LOADED{'DBD::mysql'} and substr($PM_LOADED{'DBD::mysql'},0,1) lt '3') {
+		$bad_kitty{'DBD::mysql'} = '3.0008';
+	}
+
+	# if anything failed, kill ourselves, life isn't worth living.
+	if (@failed_at_life or scalar keys %bad_kitty) {
+		print "PsychoStats failed initialization!\n";
+		if (@failed_at_life) {
+			print "The following modules are required and could not be loaded.\n";
+			print "\t" . join("\n\t", @failed_at_life) . "\n";
+			print "\n";
+		} else {
+			print "The following modules need to be upgraded to the version shown below\n";
+			print "\t$_ v$bad_kitty{$_} or newer (currently installed: $PM_LOADED{$_})\n" for keys %bad_kitty;
+			print "\n";
+		}
+
+		if (lc substr($^O,0,-2) eq "mswin") {	# WINDOWS
+			print "You can install the modules listed by using the Perl Package Manager.\n";
+			print "Typing 'ppm' at the Start->Run menu usually will open it up. Enter the module\n";
+			print "name and have it install. Then rerun PsychoStats.\n";
+			print "\nPress ^C or <enter> to exit.\n";
+			<>;
+		} else {				# LINUX
+			print "You can install the modules listed using either CPAN or if your distro\n";
+			print "supports it by installing a binary package with your package manager like\n";
+			print "'yum' (fedora / redhat), 'apt-get' or 'aptitude' (debian).\n";
+		}
+		exit 1;
+	}
+}
+
+our $VERSION = '1.00.' . (('$Rev: 468 $' =~ /(\d+)/)[0] || '000');
 
 use strict;
 use warnings;
