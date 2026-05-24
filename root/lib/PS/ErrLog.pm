@@ -66,7 +66,7 @@ sub new {
 	return $self;
 }
 
-# If log() is called as a package method it will write to stats.log.
+# If log() is called as a package method it will write to stats.log. Those errors are shown with '*'.
 # If log() is called as a class method it will write to the database.
 sub log {
 	my $self = shift;

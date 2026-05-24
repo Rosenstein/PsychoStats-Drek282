@@ -1,4 +1,8 @@
 @echo off
+@SETLOCAL
+pushd "%~dp0"
+chcp 65001 > nul 2>&1
+
 rem -- This file is for window's systems so a user can simply double-click 
 rem -- on the icon to perform daily calculations. 
 rem -- Running this batch file *IS NOT REQUIRED*. The main stats.pl 
@@ -11,12 +15,12 @@ echo ** Double click on 'stats.pl' if you want to update your stats.
 echo.
 
 
-..\stats.pl -nologs -daily -verbose
+perl ..\stats.pl -nologs -daily -verbose
 
 echo.
 echo ** DONE WITH DAILY CALCULATIONS!
 echo.
 
 rem -- remove the line below if you plan on scheduling this through Window's explorer.
-echo (remove the @pause command from this file if you do not want it to pause here)
+echo (remove the ^pause^ command from this file if you do not want it to pause here)
 pause
