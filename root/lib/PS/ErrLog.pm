@@ -17,7 +17,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
-#	$Id: ErrLog.pm 493 2008-06-17 11:26:35Z lifo $
+#	$Id: ErrLog.pm 494 2026-05-24 00:00:00Z lifo $
 #
 #       PS::ErrLog takes care of error reporting. All error messages are stored
 #       in the database This class acts as a singleton. Only the 1st call to the
@@ -32,13 +32,16 @@ use util qw( iswindows );
 
 use Carp;
 
-our $VERSION = '1.01.' . (('$Rev: 493 $' =~ /(\d+)/)[0] || '000');
+our $VERSION = '1.01.' . (('$Rev: 494 $' =~ /(\d+)/)[0] || '000');
 
 our $ANSI = 0;
-#eval "use Term::ANSIColor";
-#if (!$@) {
-#	$ANSI = 1;
-#}
+our %term_COLORS;
+eval "use Term::ANSIColor";
+if (!$@ and -t STDERR and ($ENV{TERM} // '') =~ /color|ansi|xterm/i or ($ENV{COLORTERM} // '') =~ /color|truecolor/i) {
+	$ANSI = 1;
+	%term_COLORS = ('info' => 'bold green', 'warning' => 'bold yellow', 'fatal'   => 'bold red');
+	# This can be overridden from another file by using '$PS::ErrLog::LOG_COLORS{'fatal'} = 'blink_red';' - Rosenstein
+}
 
 my $ERRHANDLER = undef;		# only 1 Error handler is ever created by new{}
 
@@ -92,7 +95,9 @@ sub log {
 
 	if (((ref $self and $self->{_verbose}) or !ref $self) or $severity ne 'info') {
 		if ($ANSI) {
-			print STDERR "[" . color('bold') . uc($severity) . color('reset') . "]" . (!ref $self ? '*' : '') . " $msg\n"
+			my $color = $term_COLORS{$severity} || 'bold';
+			print STDERR "[" . color($color) . uc($severity) . color('reset') . "]" . (!ref $self ? '*' : '') . " $msg\n"
+			#print STDERR "[" . color('bold') . uc($severity) . color('reset') . "]" . (!ref $self ? '*' : '') . " $msg\n"
 		} else {
 			print STDERR "[" . uc($severity) . "]" . (!ref $self ? '*' : '') . " $msg\n"
 		}

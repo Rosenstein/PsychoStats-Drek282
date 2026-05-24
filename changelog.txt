@@ -159,6 +159,8 @@ Version 3.2.8n (in progress)
 * [Added] TF2 support tested—credit @Rosenstein and @Wolvan.
 * [Added] Force version checks in all perl scripts. No point in allowing those to run if stats.pl itself can't. - Rosenstein
 * [Added] Documented '-nologs' option that can be used with stats.pl script - Rosenstein
+* [Restored] Perl script errors are color-coded by severity, only in supported terminal emulators. 
+    Windows Terminal will work with 'COLORTERM=truecolor' variable in your env ( https://learn.microsoft.com/en-us/windows/terminal/tips-and-tricks#environment-variables-per-profile ). - Rosenstein
 
 Version 3.2.7b (06/03/2021)
 * [Added] TFC heatmaps.
