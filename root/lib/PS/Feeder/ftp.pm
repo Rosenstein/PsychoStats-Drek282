@@ -57,23 +57,23 @@ sub init {
 	return undef unless $self->_connect;
 
 	# if a savedir was configured and it's not a directory try to create it
-=pod
-	if ($self->{savedir} and !-d $self->{savedir}) {
-		if (-e $self->{savedir}) {
-			$::ERR->warn("Invalid directory configured for saving logs ('$self->{savedir}'): Is a file");
-			$self->{savedir} = '';
-		} else {
-			eval { mkpath($self->{savedir}) };
-			if ($@) {
-				$::ERR->warn("Error creating directory for saving logs ('$self->{savedir}'): $@");
-				$self->{savedir} = '';
-			}
-		}
-	}
-	if ($self->{savedir}) {
-		$::ERR->info("Downloaded logs will be saved to: $self->{savedir}");
-	}
-=cut
+#=pod
+#	if ($self->{savedir} and !-d $self->{savedir}) {
+#		if (-e $self->{savedir}) {
+#			$::ERR->warn("Invalid directory configured for saving logs ('$self->{savedir}'): Is a file");
+#			$self->{savedir} = '';
+#		} else {
+#			eval { mkpath($self->{savedir}) };
+#			if ($@) {
+#				$::ERR->warn("Error creating directory for saving logs ('$self->{savedir}'): $@");
+#				$self->{savedir} = '';
+#			}
+#		}
+#	}
+#	if ($self->{savedir}) {
+#		$::ERR->info("Downloaded logs will be saved to: $self->{savedir}");
+#	}
+#=cut
 
 	return undef unless $self->_readdir;
 

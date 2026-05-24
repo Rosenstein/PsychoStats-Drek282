@@ -102,7 +102,7 @@ Commandline Configuration Helper *** NOT COMPLETED ***
 
 =item conf.pl <conf_type> [filename]
 
-=back 4
+=back
 
 =item B<Update a single option>
 
@@ -127,7 +127,6 @@ used then the config is written to STDOUT.
 
 =back
 
-=back
 
 =cut
 

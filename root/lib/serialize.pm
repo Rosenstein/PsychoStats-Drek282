@@ -8,6 +8,7 @@ $VERSION = 0.92;
 our $SERIALIZE_DBG = 0;
 
 =pod
+
 Perl implementation of PHP's native serialize(), unserialize(),
 and session_encode() functions.
 
@@ -94,12 +95,16 @@ Please, do not use this code in a production enviornment until
 you've thoroughly tested it.
 
 =====================================================================
+
 =cut
 
 =pod
+
 Serialize a session hashref.
 http://php.net/session_encode
+
 =cut
+
 sub session_encode {
 	my ($value) = @_;
 	my $s = "";
@@ -125,6 +130,7 @@ sub session_encode {
 }
 
 =pod
+
 Serialize a hash or array (or single value) PHP-style
 http://php.net/serialize
 
@@ -136,6 +142,7 @@ Usage:
 $serialized_string = serialize(\%hash);
 $serialized_string = serialize(\@array);
 $serialized_string = serialize($value);
+
 =cut
 
 sub serialize {
@@ -144,8 +151,11 @@ sub serialize {
 }
 
 =pod
+
 Serialize a key.  Simpler rules.
+
 =cut
+
 sub serialize_key {
 	my ($value) = @_;
 	my $s;
@@ -172,8 +182,11 @@ sub serialize_key {
 }
 
 =pod
+
 Serialize a value.  Recurse on ref to hash or array.
+
 =cut
+
 sub serialize_value {
 	my ($value) = @_;
 	my $s;
@@ -258,6 +271,7 @@ sub session_decode {
 
 
 =pod
+
 Unserializes a serialized string into its perl equivalent
 http://php.net/unserialize
 
@@ -265,7 +279,9 @@ Returns a hashref (or single value) of the serialized text string
 
 $hashref = unserialize($string);
 $value = unserialize('s:5:"Hello";');
+
 =cut
+
 sub unserialize {
 	my ($string) = @_;
 	return unserialize_value($string);
@@ -330,6 +346,7 @@ sub unserialize_value {
 }
 
 =pod
+
 Resursive unserializing routine for a serialized hash or array.
 
 This is implemented as a finite state machine.
@@ -376,6 +393,7 @@ switch $mode:
 		2) $mode='set'
 
 =cut
+
 sub unserialize_sub {
 	my ($hashref, $keys, $chars) = @_;
 	my ($temp, $keyname, $skip, $strlen);

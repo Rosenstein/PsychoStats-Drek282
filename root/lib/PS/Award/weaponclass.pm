@@ -149,19 +149,19 @@ sub calc {
 			};
 			$db->insert($db->{t_awards}, $award);
 
-=pod
-			my $idx = 0;
-			foreach my $p (@$plrs) {
-				next unless $p->{awardvalue};
-				$db->insert($db->{t_awards_plrs}, {
-					id	=> $db->next_id($db->{t_awards_plrs}),
-					idx	=> ++$idx,
-					awardid	=> $id,
-					plrid	=> $p->{plrid},
-					value	=> $p->{awardvalue}
-				});
-			}
-=cut
+#
+#			my $idx = 0;
+#			foreach my $p (@$plrs) {
+#				next unless $p->{awardvalue};
+#				$db->insert($db->{t_awards_plrs}, {
+#					id	=> $db->next_id($db->{t_awards_plrs}),
+#					idx	=> ++$idx,
+#					awardid	=> $id,
+#					plrid	=> $p->{plrid},
+#					value	=> $p->{awardvalue}
+#				});
+#			}
+#
 			$db->commit;
 		}
 	}

@@ -141,20 +141,23 @@ sub calc {
 		};
 		$db->insert($db->{t_awards}, $award);
 
-=pod
-		# we're not saving multiple players per award anymore. Only the top player above.
-		my $idx = 0;
-		foreach my $p (@$plrs) {
-			next unless $p->{awardvalue};
-			$db->insert($db->{t_awards_plrs}, {
-				id	=> $db->next_id($db->{t_awards_plrs}),
-				idx	=> ++$idx,
-				awardid	=> $id,
-				plrid	=> $p->{plrid},
-				value	=> $self->format($p->{awardvalue})
-			});
-		}
-=cut
+#
+#
+#		# we're not saving multiple players per award anymore. Only the top player above.
+#		my $idx = 0;
+#		foreach my $p (@$plrs) {
+#			next unless $p->{awardvalue};
+#			$db->insert($db->{t_awards_plrs}, {
+#				id	=> $db->next_id($db->{t_awards_plrs}),
+#				idx	=> ++$idx,
+#				awardid	=> $id,
+#				plrid	=> $p->{plrid},
+#				value	=> $self->format($p->{awardvalue})
+#			});
+#		}
+#		
+#
+
 		$db->commit;
 	}
 
