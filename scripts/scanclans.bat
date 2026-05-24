@@ -1,4 +1,8 @@
 @echo off
+@SETLOCAL
+pushd "%~dp0"
+chcp 65001 > nul 2>&1
+
 rem -- This file is for window's systems so a user can simply double-click 
 rem -- on the icon to completely rescan their clantags. This is useful
 rem -- after adding a new clantag to the configuration.
@@ -11,7 +15,7 @@ echo.
 
 pause 
 
-..\stats.pl -nologs -scanclantags all -debug
+perl ..\stats.pl -nologs -scanclantags all -debug
 
 echo.
 echo ** DONE SCANNING CLANTAGS!
